@@ -12,6 +12,7 @@
 #include <random>
 #include <iostream>
 #include <algorithm>
+#include <chrono>
 
 class RedisManager
 {
@@ -190,8 +191,8 @@ private:
 						static std::random_device rd;
 						static std::mt19937 gen(rd());
 						int nums[] = {0, 1, 2, 3, 4};
-						int first, firstIndex;
-						int sec, secIndex;
+						int first = -1, firstIndex = -1;
+						int sec = -1, secIndex = -1;
 						
 						//랜덤 인덱스 1
 						std::uniform_int_distribution<int> dis1(0, 4); firstIndex = dis1(gen);
@@ -306,21 +307,21 @@ private:
 						if (!exchangeQueueA.empty() || !exchangeQueueB.empty()) // 슬롯이 꽉 차 교환할 수 없음
 						{
 							resData.IsSuccess = false;
-							RedisTask resTask;
-							resTask.TaskID = RedisTaskID::RESPONSE_TRADE_EXCHANGE;
-							resTask.UserIndex = pRequest->UserA;
-							resTask.DataSize = sizeof(RedisTradeRes);
-							resTask.pData = new char[resTask.DataSize];
-							memcpy(resTask.pData, &resData, resTask.DataSize);
-							PushResponse(resTask);
+							RedisTask resTaskA;
+							resTaskA.TaskID = RedisTaskID::RESPONSE_TRADE_EXCHANGE;
+							resTaskA.UserIndex = pRequest->UserA;
+							resTaskA.DataSize = sizeof(RedisTradeRes);
+							resTaskA.pData = new char[resTaskA.DataSize];
+							memcpy(resTaskA.pData, &resData, resTaskA.DataSize);
+							PushResponse(resTaskA);
 
-							RedisTask resTask;
-							resTask.TaskID = RedisTaskID::RESPONSE_TRADE_EXCHANGE;
-							resTask.UserIndex = pRequest->UserB;
-							resTask.DataSize = sizeof(RedisTradeRes);
-							resTask.pData = new char[resTask.DataSize];
-							memcpy(resTask.pData, &resData, resTask.DataSize);
-							PushResponse(resTask);
+							RedisTask resTaskB;
+							resTaskB.TaskID = RedisTaskID::RESPONSE_TRADE_EXCHANGE;
+							resTaskB.UserIndex = pRequest->UserB;
+							resTaskB.DataSize = sizeof(RedisTradeRes);
+							resTaskB.pData = new char[resTaskB.DataSize];
+							memcpy(resTaskB.pData, &resData, resTaskB.DataSize);
+							PushResponse(resTaskB);
 						}
 						else // 실제 DB적용
 						{
@@ -329,60 +330,128 @@ private:
 
 							for (int i = 0; i < INVENTORY_SIZE; i++)
 							{
-								/*mConn.hset(Aid, std::to_string(i), std::to_string(arrayA[i]), ret);
-								mConn.hset(Bid, std::to_string(i), std::to_string(arrayB[i]), ret);*/
-
-								//트랜잭션 사용으로 raw command 사용함
-								// -> 리턴값 달라서 hset으로 하면 오류날 수도 있음
 								mConn.redisCmd("HSET %s %d %d", Aid.c_str(), i, arrayA[i]);
 								mConn.redisCmd("HSET %s %d %d", Bid.c_str(), i, arrayB[i]);
 							}
 
-							redisReply* reply = mConn.redisCmd("EXEC");
+							reply = mConn.redisCmd("EXEC");
 							freeReplyObject(reply);
 
 							resData.IsSuccess = true;
-							RedisTask resTask;
-							resTask.TaskID = RedisTaskID::RESPONSE_TRADE_EXCHANGE;
-							resTask.UserIndex = pRequest->UserA;
-							resTask.DataSize = sizeof(RedisTradeRes);
-							resTask.pData = new char[resTask.DataSize];
-							memcpy(resTask.pData, &resData, resTask.DataSize);
-							PushResponse(resTask);
+							RedisTask resTaskA;
+							resTaskA.TaskID = RedisTaskID::RESPONSE_TRADE_EXCHANGE;
+							resTaskA.UserIndex = pRequest->UserA;
+							resTaskA.DataSize = sizeof(RedisTradeRes);
+							resTaskA.pData = new char[resTaskA.DataSize];
+							memcpy(resTaskA.pData, &resData, resTaskA.DataSize);
+							PushResponse(resTaskA);
 
-							RedisTask resTask;
-							resTask.TaskID = RedisTaskID::RESPONSE_TRADE_EXCHANGE;
-							resTask.UserIndex = pRequest->UserB;
-							resTask.DataSize = sizeof(RedisTradeRes);
-							resTask.pData = new char[resTask.DataSize];
-							memcpy(resTask.pData, &resData, resTask.DataSize);
-							PushResponse(resTask);
+							RedisTask resTaskB;
+							resTaskB.TaskID = RedisTaskID::RESPONSE_TRADE_EXCHANGE;
+							resTaskB.UserIndex = pRequest->UserB;
+							resTaskB.DataSize = sizeof(RedisTradeRes);
+							resTaskB.pData = new char[resTaskB.DataSize];
+							memcpy(resTaskB.pData, &resData, resTaskB.DataSize);
+							PushResponse(resTaskB);
 						}
 						
 					}
 				}
 				else if (task.TaskID == RedisTaskID::REQUEST_SHOP_UPDATE)
 				{
-					// 랜덤 아이템 생성
-					int newItem = 100 + (rand() % 5);
-					INT64 nextTime = std::time(nullptr) + 3600; // 1시간 추가
-					uint32_t ret;
+					int commandValue = 0; // 0이면 바로 초기화, 1이상이면 시간 추가 및 체크, -1은 processpacket에서 1초마다 체크용
+					if (task.DataSize == sizeof(int) && task.pData != nullptr)
+					{
+						commandValue = *(int*)task.pData;
+					}
 
-					//상점 레디스 업데이트
-					mConn.hset("game:shop_state", "current_item", std::to_string(newItem), ret);
-					mConn.hset("game:shop_state", "next_update_ts", std::to_string(nextTime), ret);
+					time_t now = std::time(nullptr);
+					std::string dbTime, dbItem;
+					UINT64 storedNextTime = 0;
+					int currentItemID = 101;
 
-					SHOP_INFO_PACKET p;
-					p.currentItemID = newItem;
-					p.nextUpdateTime = nextTime;
 
-					//packetManager에 shopUpdateDBResult에서 브로드캐스트 해줌
-					RedisTask res;
-					res.TaskID = RedisTaskID::RESPONSE_SHOP_UPDATE;
-					res.DataSize = sizeof(p);
-					res.pData = new char[res.DataSize];
-					memcpy(res.pData, &p, res.DataSize);
-					PushResponse(res);
+					mConn.hget("game:shop_state", "next_update_ts", dbTime);
+					mConn.hget("game:shop_state", "current_item", dbItem);
+
+					if (!dbTime.empty()) storedNextTime = std::stoull(dbTime);
+					if (!dbItem.empty()) currentItemID = std::stoi(dbItem);
+
+					// 자정 초기화를 위해 날짜 계산
+					auto GetNextMidnight = [&](time_t baseTime)->UINT64 
+						{
+						struct tm timeInfo;
+						localtime_s(&timeInfo, &baseTime); // 현재 시간 구조체로 변환
+
+						timeInfo.tm_hour = 0;
+						timeInfo.tm_min = 0;
+						timeInfo.tm_sec = 0;
+						timeInfo.tm_mday += 1; // 날짜 하루 더함 (자동으로 월/년 넘어감)
+
+						return (UINT64)mktime(&timeInfo); // 다시 타임스탬프로 변환
+						};
+
+					bool needDBUpdate = false;
+					UINT64 finalNextTime = storedNextTime;
+
+					
+					// /shop_reset 그냥 초기화
+					if (commandValue == 0)
+					{
+						currentItemID = 101 + (rand() % 5);
+						finalNextTime = GetNextMidnight(now); // 지금 기준으로 내일 자정 계산
+						needDBUpdate = true;
+						printf("[Shop] Reset\n");
+					}
+					else if (commandValue > 0)	// /t add 1
+					{
+						//초기화 시간 지남
+						if ((UINT64)now > storedNextTime)
+						{
+							finalNextTime = (UINT64)now + (commandValue * 3600);
+						}
+						else
+						{
+							finalNextTime = storedNextTime + (commandValue * 3600);
+						}
+
+						needDBUpdate = true;
+						printf("[Shop] Add %d hours.\n", commandValue);
+					}
+					else if (commandValue == -1)	//시간 체크 processpacket에서 요청
+					{
+						if (storedNextTime == 0 || (UINT64)now >= storedNextTime)
+						{
+							currentItemID = 101 + (rand() % 5); // 아이템 변경
+							finalNextTime = GetNextMidnight(now); // 내일 자정으로 다시 갱신함
+
+							needDBUpdate = true;
+							printf("[Shop] Daily Reset\n");
+						}
+
+						printf("[Shop] %d / %d\n", now, storedNextTime);
+					}
+
+					// 변경사항 저장, 브로드캐스트
+					if (needDBUpdate)
+					{
+						uint32_t ret;
+						mConn.hset("game:shop_state", "current_item", std::to_string(currentItemID), ret);
+						mConn.hset("game:shop_state", "next_update_ts", std::to_string(finalNextTime), ret);
+
+						RedisShopRes resData;
+						resData.ItemID = currentItemID;
+						resData.NextUpdateTime = finalNextTime;
+
+						RedisTask resTask;
+						resTask.TaskID = RedisTaskID::RESPONSE_SHOP_UPDATE;
+						resTask.UserIndex = 0;
+						resTask.DataSize = sizeof(RedisShopRes);
+						resTask.pData = new char[resTask.DataSize];
+						memcpy(resTask.pData, &resData, resTask.DataSize);
+
+						PushResponse(resTask);
+					}
 				}
 
 				task.Release();

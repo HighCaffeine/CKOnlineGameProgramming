@@ -1,6 +1,7 @@
 #include <utility>
 #include <cstring>
 #include <sstream>
+#include <chrono>
 
 #include "UserManager.h"
 #include "RoomManager.h"
@@ -176,6 +177,8 @@ void PacketManager::RedisReqNotice(User& user, const std::string noticeMsg)
 
 void PacketManager::ProcessPacket()
 {
+	static auto lastCheckTime = std::chrono::steady_clock::now();
+
 	while (mIsRunProcessThread)
 	{
 		bool isIdle = true;
@@ -197,6 +200,20 @@ void PacketManager::ProcessPacket()
 			isIdle = false;
 			ProcessRecvPacket(task.UserIndex, (UINT16)task.TaskID, task.DataSize, task.pData);
 			task.Release();
+		}
+
+		auto now = std::chrono::steady_clock::now();
+		if (std::chrono::duration_cast<std::chrono::seconds>(now - lastCheckTime).count() >= 1)
+		{
+			lastCheckTime = now;
+
+			int cmdValue = -1;
+			RedisTask task;
+			task.TaskID = RedisTaskID::REQUEST_SHOP_UPDATE;
+			task.DataSize = sizeof(int);
+			task.pData = new char[sizeof(int)];
+			memcpy(task.pData, &cmdValue, sizeof(int));
+			mRedisMgr->PushTask(task);
 		}
 
 		if(isIdle)
@@ -462,12 +479,37 @@ void PacketManager::ProcessRoomChatMessage(UINT32 clientIndex_, UINT16 packetSiz
 		return;
 	}
 
-	// 길찾기
-	if (cmdMessage.find("/p", 0) == 0)
+	
+	//shop 업데이트
+	if (cmdMessage.find("/shop_reset", 0) == 0)
 	{
-		// 앞에 "/p"로 시작하는 부분을 잘라낸다
-		const std::string endPosStr = cmdMessage.substr(2);
-		TempFindPath(endPosStr, *reqUser, *pRoom);
+		printf("[GM Command] Shop Reset Req by %d\n", clientIndex_);
+
+		RedisTask task;
+		task.TaskID = RedisTaskID::REQUEST_SHOP_UPDATE;
+		task.UserIndex = clientIndex_;
+		task.DataSize = 0;
+		task.pData = nullptr;
+		mRedisMgr->PushTask(task);
+
+		return;
+	}
+
+	if (cmdMessage.find("/t add") == 0)
+	{
+		std::string s = cmdMessage.substr(7);
+		int time = std::stoi(s);
+
+		printf("[GM Command] Time Add %d hours Req by %d\n", time, clientIndex_);
+
+		RedisTask task;
+		task.TaskID = RedisTaskID::REQUEST_SHOP_UPDATE;
+		task.DataSize = sizeof(int);
+		task.pData = new char[sizeof(int)];
+		memcpy(task.pData, &time, sizeof(int));
+
+		mRedisMgr->PushTask(task);
+
 		return;
 	}
 		
@@ -507,17 +549,9 @@ void PacketManager::ProcessTradeRequest(UINT32 clientIndex_, UINT16 packetSize_,
 	SendPacketFunc(pReq->targetUUID, sizeof(p), (char*)&p);
 }
 
-//서버 내에서 거래를 재현하기 위한 구조체, 나중에 헤더로 옮겨야함
-struct TradeSession
-{
-	int userA, userB;	//A B의 id
-	bool isLockA = false, isLockB = false;	//lock상태
-	bool isConfirmA = false, isConfirmB = false;	//confirm상태
-	std::vector<int> itemsA, itemsB;	//올린 아이템들
-};
-
 void PacketManager::ProcessTradeResponse(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
 {
+
 }
 
 void PacketManager::ProcessTradeItemUpdate(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
@@ -534,6 +568,7 @@ void PacketManager::ProcessTradeConfirm(UINT32 clientIndex_, UINT16 packetSize_,
 
 void PacketManager::ProcessTradeDBResult(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
 {
+
 }
 
 void PacketManager::ProcessShopUpdateDBResult(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
@@ -548,31 +583,6 @@ void PacketManager::ProcessShopUpdateDBResult(UINT32 clientIndex_, UINT16 packet
 	mRoomManager->SendToAllUser(p.PacketLength, (char*)&p, -1, false);
 	printf("[Redis] Shop Update Broadcast. Item: %d\n", p.currentItemID);
 }
-
-void PacketManager::TempFindPath(const std::string& endPosStr, User& user, Room& room)
-{
-
-	printf("[TempFindPath] userUUID(%lld) pos(%f,%f,%f), endPos(%s)\n", user.GetNetConnIdx(),
-		user.GetPosition().x, user.GetPosition().y, user.GetPosition().z, endPosStr.c_str());
-
-	Vector3 end = stringToVector3(endPosStr);
-	std::vector<Vector3> path = room.FindPath(user.GetPosition(), end);
-
-	MOVE_PATH_RESPONSE_PACKET movePathResponse;
-	movePathResponse.userUUID = user.GetNetConnIdx();
-	movePathResponse.pathCount = path.size() > 10 ? 10 : path.size();
-
-	for (int i = 0; i < path.size() && i < 10; ++i)
-	{
-		movePathResponse.path[i] = path[i];
-		printf("[TempFindPath] path[%i](%f,%f,%f)\n", i, path[i].x, path[i].y, path[i].z);
-	}
-
-	// Send
-	room.SendToAllUser(movePathResponse.PacketLength, (char*)&movePathResponse, user.GetNetConnIdx(), false);
-}
-
-
 
 Vector3 stringToVector3(const std::string& s) {
 	std::stringstream ss(s);

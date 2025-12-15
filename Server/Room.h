@@ -3,7 +3,6 @@
 #include "Npc.h"
 #include "UserManager.h"
 #include "Packet.h"
-#include "NavMeshManager.h"
 
 #include <functional>
 
@@ -28,33 +27,6 @@ public:
 	{
 		mRoomNum = roomNum_;
 		mMaxUserCount = maxUserCount_;
-		InitNavMesh(navMeshFileName);
-	}
-
-	void InitNavMesh(const std::string& navMeshFileName)
-	{
-		if (navMeshManager.LoadNavMesh(navMeshFileName.c_str())) {
-			std::cout << "NavMesh Loaded!" << std::endl;
-
-			// Unity에서 보낸 좌표라고 가정
-			Vector3 start = { 10.5f, 0.0f, -5.2f };
-			Vector3 end = { 42.1f, 0.0f, 15.8f };
-
-			std::vector<Vector3> path = navMeshManager.FindPath(start, end);
-
-			std::cout << "Path Found: " << path.size() << " points." << std::endl;
-			for (const auto& p : path) {
-				std::cout << "(" << p.x << ", " << p.y << ", " << p.z << ")" << std::endl;
-			}
-		}
-		else {
-			std::cout << "Failed to load NavMesh." << std::endl;
-		}
-	}
-
-	std::vector<Vector3> FindPath(const Vector3& start, const Vector3& end)
-	{
-		return navMeshManager.FindPath(start, end);
 	}
 
 	UINT16 EnterUser(User* user_)
@@ -190,8 +162,6 @@ public:
 	}
 
 private:
-	NavMeshManager navMeshManager;
-
 	INT32 mRoomNum = -1;
 
 	std::list<User*> mUserList;

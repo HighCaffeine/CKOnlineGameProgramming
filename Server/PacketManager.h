@@ -77,11 +77,17 @@ private:
 	//상점처리
 	void ProcessShopUpdateDBResult(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_);
 
-	void TempFindPath(const std::string& endPosStr, User& user, Room& room);
-
 
 	typedef void(PacketManager::* PROCESS_RECV_PACKET_FUNCTION)(UINT32, UINT16, char*);
 	std::unordered_map<int, PROCESS_RECV_PACKET_FUNCTION> mRecvFuntionDictionary;
+
+	struct TradeSession
+	{
+		int userA, userB;	//A B의 id
+		bool isLockA = false, isLockB = false;	//lock상태
+		bool isConfirmA = false, isConfirmB = false;	//confirm상태
+		std::vector<int> itemsA, itemsB;	//올린 아이템들
+	};
 
 	UserManager* mUserManager;
 	RoomManager* mRoomManager;	

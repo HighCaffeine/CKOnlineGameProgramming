@@ -63,11 +63,31 @@ private:
 	void ProcessPlayerMovement(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_);
 	void ProcessRoomChatMessage(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_);
 
-	void TempFindPath(const std::string& endPosStr, User& user, Room& room);
+	//인벤처리
+	void ProcessInventoryDBResult(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_);
+
+	//거래처리
+	void ProcessTradeRequest(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_);
+	void ProcessTradeResponse(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_);
+	void ProcessTradeItemUpdate(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_);
+	void ProcessTradeLock(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_);
+	void ProcessTradeConfirm(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_);
+	void ProcessTradeDBResult(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_);
+
+	//상점처리
+	void ProcessShopUpdateDBResult(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_);
 
 
 	typedef void(PacketManager::* PROCESS_RECV_PACKET_FUNCTION)(UINT32, UINT16, char*);
 	std::unordered_map<int, PROCESS_RECV_PACKET_FUNCTION> mRecvFuntionDictionary;
+
+	struct TradeSession
+	{
+		int userA, userB;	//A B의 id
+		bool isLockA = false, isLockB = false;	//lock상태
+		bool isConfirmA = false, isConfirmB = false;	//confirm상태
+		std::vector<int> itemsA, itemsB;	//올린 아이템들
+	};
 
 	UserManager* mUserManager;
 	RoomManager* mRoomManager;	

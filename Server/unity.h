@@ -1,6 +1,10 @@
+#pragma once
+
 #ifndef UNITY_H
 
 #define FIXED_DELTA_TIME 0.033333f
+
+constexpr int INVENTORY_SIZE = 5;   //인벤토리 사이즈
 
 typedef struct Vector3
 {

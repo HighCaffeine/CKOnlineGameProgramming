@@ -428,8 +428,6 @@ private:
 							needDBUpdate = true;
 							printf("[Shop] Daily Reset\n");
 						}
-
-						printf("[Shop] %d / %d\n", now, storedNextTime);
 					}
 
 					// 변경사항 저장, 브로드캐스트

@@ -1,6 +1,7 @@
 #pragma once
 
 #define WIN32_LEAN_AND_MEAN
+#define EMPTYITEM 0
 #include <windows.h>
 #include "ErrorCode.h"
 
@@ -27,6 +28,15 @@ enum class RedisTaskID : UINT16
 	REQUEST_TRADE_EXCHANGE = 13001,
 	RESPONSE_TRADE_EXCHANGE = 13002,
 	
+};
+
+enum class ItemID : UINT16
+{
+	COIN = 101,
+	SWORD = 102,
+	SHIELD = 103,
+	POTION = 104,
+	CLOTHES = 105
 };
 
 
@@ -95,6 +105,7 @@ struct RedisInvenRes
 struct RedisTradeReq
 {
 	int UserA, UserB;				//유저 인덱스 정보
+	char UserAID[MAX_USER_ID_LEN + 1], UserBID[MAX_USER_ID_LEN + 1]; // 유저 ID
 	int CountA, CountB;				//각자 몇 개 보내는지
 	
 	//A 거래 데이터

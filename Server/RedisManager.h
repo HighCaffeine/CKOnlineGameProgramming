@@ -231,8 +231,124 @@ private:
 				{
 					auto pRequest = (RedisTradeReq*)task.pData;
 					RedisTradeRes resData;
-
 					//유저 키(해쉬 키)
+					std::string Aid = "u:" + std::string(pRequest->UserAID) + ":inven";
+					std::string Bid = "u:" + std::string(pRequest->UserBID) + ":inven";
+					std::map<std::string, std::string> invenA;
+					std::map<std::string, std::string> invenB;
+					std::deque<int> exchangeQueueA;
+					std::deque<int> exchangeQueueB;
+
+					uint32_t ret;
+					if (mConn.hgetall(Aid, invenA) && mConn.hgetall(Bid, invenB))
+					{
+						int arrayA[INVENTORY_SIZE]; // 현재 가지고있는 인벤토리 데이터
+						int arrayB[INVENTORY_SIZE];
+
+						for (int i = 0; i < INVENTORY_SIZE; i++) // 교환창에있는 아이템들을 Queue에 담음
+						{
+							if (pRequest->ItemsAID[i] != EMPTYITEM) exchangeQueueA.push_back(pRequest->ItemsAID[i]); 
+							if (pRequest->ItemsBID[i] != EMPTYITEM) exchangeQueueB.push_back(pRequest->ItemsBID[i]);
+						}
+
+						// 현재 가지고있는 아이템들을 DB에서 가져오기
+						for (auto& [key, value] : invenA)
+						{
+
+							int index = std::stoi(key);
+							if (index < INVENTORY_SIZE && index >= 0)
+							{
+								arrayA[index] = std::stoi(value);
+							}
+						}
+
+						for (auto& [key, value] : invenB)
+						{
+							int index = std::stoi(key);
+
+							if (index < INVENTORY_SIZE && index >= 0)
+							{
+								arrayB[index] = std::stoi(value);
+							}
+						}
+
+
+
+						// 각 플레이어의 인벤토리 array에서 해당되는 아이템을 지움
+						for (int i = 0; i < INVENTORY_SIZE; i++)
+						{
+							if (pRequest->ItemsASlot[i] >= 0)
+							{
+								arrayA[pRequest->ItemsASlot[i]] = EMPTYITEM;
+							}
+							if (pRequest->ItemsBSlot[i] >= 0)
+							{
+								arrayB[pRequest->ItemsASlot[i]] = EMPTYITEM;
+							}
+						}
+
+
+						// 교환
+						for (int i = 0; i < INVENTORY_SIZE; i++)
+						{
+							if (arrayA[i] == EMPTYITEM && !exchangeQueueB.empty())
+							{
+								arrayA[i] = exchangeQueueB.front();
+								exchangeQueueB.pop_front();
+							}
+							if (arrayB[i] == EMPTYITEM && !exchangeQueueA.empty())
+							{
+								arrayA[i] = exchangeQueueA.front();
+								exchangeQueueA.pop_front();
+							}
+						}
+
+						if (!exchangeQueueA.empty() || !exchangeQueueB.empty()) // 슬롯이 꽉 차 교환할 수 없음
+						{
+							resData.IsSuccess = false;
+							RedisTask resTask;
+							resTask.TaskID = RedisTaskID::RESPONSE_TRADE_EXCHANGE;
+							resTask.UserIndex = pRequest->UserA;
+							resTask.DataSize = sizeof(RedisTradeRes);
+							resTask.pData = new char[resTask.DataSize];
+							memcpy(resTask.pData, &resData, resTask.DataSize);
+							PushResponse(resTask);
+
+							RedisTask resTask;
+							resTask.TaskID = RedisTaskID::RESPONSE_TRADE_EXCHANGE;
+							resTask.UserIndex = pRequest->UserB;
+							resTask.DataSize = sizeof(RedisTradeRes);
+							resTask.pData = new char[resTask.DataSize];
+							memcpy(resTask.pData, &resData, resTask.DataSize);
+							PushResponse(resTask);
+						}
+						else // 실제 DB적용
+						{
+							for (int i = 0; i < INVENTORY_SIZE; i++)
+							{
+								mConn.hset(Aid, std::to_string(i), std::to_string(arrayA[i]), ret);
+								mConn.hset(Bid, std::to_string(i), std::to_string(arrayB[i]), ret);
+							}
+
+							resData.IsSuccess = true;
+							RedisTask resTask;
+							resTask.TaskID = RedisTaskID::RESPONSE_TRADE_EXCHANGE;
+							resTask.UserIndex = pRequest->UserA;
+							resTask.DataSize = sizeof(RedisTradeRes);
+							resTask.pData = new char[resTask.DataSize];
+							memcpy(resTask.pData, &resData, resTask.DataSize);
+							PushResponse(resTask);
+
+							RedisTask resTask;
+							resTask.TaskID = RedisTaskID::RESPONSE_TRADE_EXCHANGE;
+							resTask.UserIndex = pRequest->UserB;
+							resTask.DataSize = sizeof(RedisTradeRes);
+							resTask.pData = new char[resTask.DataSize];
+							memcpy(resTask.pData, &resData, resTask.DataSize);
+							PushResponse(resTask);
+						}
+						
+					}
 
 					//유저 인벤토리 로드 map -> array
 					//hgetall -> return bool(suc -> 1)
@@ -250,14 +366,6 @@ private:
 
 
 					//아래 테스크 보내는거 A용이랑, B용 둘 다 보내줘야함
-					RedisTask resTask;
-					resTask.TaskID = RedisTaskID::RESPONSE_TRADE_EXCHANGE;
-					resTask.UserIndex = task.UserIndex;
-					resTask.DataSize = sizeof(RedisTradeRes);
-					resTask.pData = new char[resTask.DataSize];
-					memcpy(resTask.pData, &resData, resTask.DataSize);
-
-					PushResponse(resTask);
 				}
 				else if (task.TaskID == RedisTaskID::REQUEST_SHOP_UPDATE)
 				{

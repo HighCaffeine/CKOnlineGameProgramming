@@ -25,7 +25,19 @@ void PacketManager::Init(const UINT32 maxClient_)
 	mRecvFuntionDictionary[(int)PACKET_ID::ROOM_LEAVE_REQUEST] = &PacketManager::ProcessLeaveRoom;
 	mRecvFuntionDictionary[(int)PACKET_ID::ROOM_CHAT_REQUEST] = &PacketManager::ProcessRoomChatMessage;
 	mRecvFuntionDictionary[(int)PACKET_ID::PLAYER_MOVEMENT] = &PacketManager::ProcessPlayerMovement;
-				
+	
+	//레디스 응답 패킷
+	mRecvFuntionDictionary[(int)RedisTaskID::RESPONSE_LOAD_INVENTORY] = &PacketManager::ProcessInventoryDBResult;
+	mRecvFuntionDictionary[(int)RedisTaskID::RESPONSE_TRADE_EXCHANGE] = &PacketManager::ProcessTradeDBResult;
+	mRecvFuntionDictionary[(int)RedisTaskID::RESPONSE_SHOP_UPDATE] = &PacketManager::ProcessShopUpdateDBResult;
+
+	//거래 패킷
+	mRecvFuntionDictionary[(int)PACKET_ID::TRADE_REQUEST] = &PacketManager::ProcessTradeRequest;
+	mRecvFuntionDictionary[(int)PACKET_ID::TRADE_REQUEST_NTF] = &PacketManager::ProcessTradeResponse;
+	mRecvFuntionDictionary[(int)PACKET_ID::TRADE_ITEM_UPDATE] = &PacketManager::ProcessTradeItemUpdate;
+	mRecvFuntionDictionary[(int)PACKET_ID::TRADE_LOCK] = &PacketManager::ProcessTradeLock;
+	mRecvFuntionDictionary[(int)PACKET_ID::TRADE_CONFIRM] = &PacketManager::ProcessTradeConfirm;
+
 	CreateCompent(maxClient_);
 
 	mRedisMgr = new RedisManager;// std::make_unique<RedisManager>();
@@ -283,6 +295,26 @@ void PacketManager::ProcessLoginDBResult(UINT32 clientIndex_, UINT16 packetSize_
 	// Unity3D 대응용
 	loginResPacket.Result = clientIndex_;
 	SendPacketFunc(clientIndex_, sizeof(LOGIN_RESPONSE_PACKET), (char*)&loginResPacket);
+
+	//인벤토리 처리
+	if (pBody->Result == (UINT16)ERROR_CODE::NONE)
+	{
+		auto pUser = mUserManager->GetUserByConnIdx(clientIndex_);
+
+		RedisInvenReq req;
+		req.UserIndex = clientIndex_;
+
+		strncpy_s(req.UserID, pBody->UserID, MAX_USER_ID_LEN);
+
+		RedisTask task;
+		task.TaskID = RedisTaskID::REQUEST_LOAD_INVENTORY;
+		task.DataSize = sizeof(RedisInvenRes);
+		task.pData = new char[task.DataSize];
+		memcpy(task.pData, &req, task.DataSize);
+
+		//다시 인벤토리 업데이트 요청으로 ProcessInventoryDBResult로 처리
+		mRedisMgr->PushTask(task);
+	}
 }
 
 void PacketManager::ProcessNoticeDBResult(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
@@ -442,7 +474,80 @@ void PacketManager::ProcessRoomChatMessage(UINT32 clientIndex_, UINT16 packetSiz
 	SendPacketFunc(clientIndex_, sizeof(ROOM_CHAT_RESPONSE_PACKET), (char*)&roomChatResPacket);
 
 	pRoom->NotifyChat(clientIndex_, reqUser->GetUserId().c_str(), pRoomChatReqPacketet->Message);		
-}		   
+}
+
+void PacketManager::ProcessInventoryDBResult(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
+{
+	auto pBody = (RedisInvenRes*)pPacket_;
+	auto pUser = mUserManager->GetUserByConnIdx(clientIndex_);
+
+	INVENTORY_INFO_PACKET p;
+	p.userUUID = clientIndex_;
+
+	for (int i = 0; i < INVENTORY_SIZE; i++)
+	{
+		int itemID = pBody->ItemSlots[i];
+		pUser->SetInventory(i, itemID);
+		p.itemIDs[i] = itemID;
+	}
+
+	SendPacketFunc(clientIndex_, sizeof(p), (char*)&p);
+	printf("[Redis] Inventory Loaded for User %d\n", clientIndex_);
+}
+
+void PacketManager::ProcessTradeRequest(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
+{
+	auto pReq = (TRADE_REQUEST_PACKET*)pPacket_;
+	auto pUser = mUserManager->GetUserByConnIdx(clientIndex_);
+
+	TRADE_REQUEST_NTF_PACKET p;
+	p.reqUUID = clientIndex_;
+	strncpy_s(p.reqName, pUser->GetUserId().c_str(), MAX_USER_ID_LEN);
+
+	SendPacketFunc(pReq->targetUUID, sizeof(p), (char*)&p);
+}
+
+//서버 내에서 거래를 재현하기 위한 구조체, 나중에 헤더로 옮겨야함
+struct TradeSession
+{
+	int userA, userB;	//A B의 id
+	bool isLockA = false, isLockB = false;	//lock상태
+	bool isConfirmA = false, isConfirmB = false;	//confirm상태
+	std::vector<int> itemsA, itemsB;	//올린 아이템들
+};
+
+void PacketManager::ProcessTradeResponse(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
+{
+}
+
+void PacketManager::ProcessTradeItemUpdate(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
+{
+}
+
+void PacketManager::ProcessTradeLock(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
+{
+}
+
+void PacketManager::ProcessTradeConfirm(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
+{
+}
+
+void PacketManager::ProcessTradeDBResult(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
+{
+}
+
+void PacketManager::ProcessShopUpdateDBResult(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
+{
+	auto pBody = (RedisShopRes*)pPacket_;
+
+	SHOP_INFO_PACKET p;
+	p.currentItemID = pBody->ItemID;
+	p.nextUpdateTime = pBody->NextUpdateTime;
+
+	//모든 유저에게 전송
+	mRoomManager->SendToAllUser(p.PacketLength, (char*)&p, -1, false);
+	printf("[Redis] Shop Update Broadcast. Item: %d\n", p.currentItemID);
+}
 
 void PacketManager::TempFindPath(const std::string& endPosStr, User& user, Room& room)
 {

@@ -363,17 +363,26 @@ private:
 				}
 				else if (task.TaskID == RedisTaskID::REQUEST_SHOP_UPDATE)
 				{
-					auto pRequest = (RedisShopReq*)task.pData;
-					RedisShopRes resData;
+					// 랜덤 아이템 생성
+					int newItem = 100 + (rand() % 5);
+					INT64 nextTime = std::time(nullptr) + 3600; // 1시간 추가
+					uint32_t ret;
 
-					RedisTask resTask;
-					resTask.TaskID = RedisTaskID::RESPONSE_SHOP_UPDATE;
-					resTask.UserIndex = task.UserIndex;
-					resTask.DataSize = sizeof(RedisShopRes);
-					resTask.pData = new char[resTask.DataSize];
-					memcpy(resTask.pData, &resData, resTask.DataSize);
+					//상점 레디스 업데이트
+					mConn.hset("game:shop_state", "current_item", std::to_string(newItem), ret);
+					mConn.hset("game:shop_state", "next_update_ts", std::to_string(nextTime), ret);
 
-					PushResponse(resTask);
+					SHOP_INFO_PACKET p;
+					p.currentItemID = newItem;
+					p.nextUpdateTime = nextTime;
+
+					//packetManager에 shopUpdateDBResult에서 브로드캐스트 해줌
+					RedisTask res;
+					res.TaskID = RedisTaskID::RESPONSE_SHOP_UPDATE;
+					res.DataSize = sizeof(p);
+					res.pData = new char[res.DataSize];
+					memcpy(res.pData, &p, res.DataSize);
+					PushResponse(res);
 				}
 
 				task.Release();

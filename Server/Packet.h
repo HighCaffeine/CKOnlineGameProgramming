@@ -144,7 +144,7 @@ struct LOGIN_RESPONSE_PACKET : public PACKET_HEADER
 struct ROOM_ENTER_REQUEST_PACKET : public PACKET_HEADER
 {
 	INT32 RoomNumber;
-	ROOM_ENTER_REQUEST_PACKET() : RoomNumber{ 0 },PACKET_HEADER(sizeof(*this), PACKET_ID::ROOM_ENTER_REQUEST) {}
+	ROOM_ENTER_REQUEST_PACKET() : RoomNumber{ 0 }, PACKET_HEADER(sizeof(*this), PACKET_ID::ROOM_ENTER_REQUEST) {}
 };
 
 struct ROOM_ENTER_RESPONSE_PACKET : public PACKET_HEADER
@@ -160,12 +160,12 @@ struct ROOM_NEW_USER_NTF_PACKET : public PACKET_HEADER
 	INT64 userUUID;
 	char userID[MAX_USER_ID_LEN + 1];
 
-	ROOM_NEW_USER_NTF_PACKET(): PACKET_HEADER(sizeof(*this), PACKET_ID::ROOM_NEW_USER_NTF) {}
+	ROOM_NEW_USER_NTF_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::ROOM_NEW_USER_NTF) {}
 };
 
 struct ROOM_USER_INFO_NTF_PACKET : public PACKET_HEADER
 {
-	
+
 	INT64 userUUID;
 	char userID[MAX_USER_ID_LEN + 1];
 	Vector3 position;
@@ -270,46 +270,101 @@ struct MOVE_PATH_RESPONSE_PACKET : public PACKET_HEADER
 
 #pragma region Shop Packet
 //SHOP_INFO
-struct SHOP_INFO_PACKET : public PACKET_HEADER {};
+struct SHOP_INFO_PACKET : public PACKET_HEADER
+{
+	INT32 currentItemID;	//현재 판매중 아이템 (1개만 할 거)
+	INT64 nextUpdateTime;	//다음 갱신 시간
+	SHOP_INFO_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::SHOP_INFO) {}
+};
 #pragma endregion
 #pragma region Inventory Packet
 //INVENTORY_INFO
-struct INVENTORY_INFO_PACKET : public PACKET_HEADER {};
+struct INVENTORY_INFO_PACKET : public PACKET_HEADER
+{
+	INT64 userUUID;
+	int itemIDs[INVENTORY_SIZE] = { 0, };
+	INVENTORY_INFO_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::INVENTORY_INFO) {}
+};
 #pragma endregion
 #pragma region Trade Packets
 
-//TRADE_REQUEST
-struct TRADE_REQUEST_PACKET : public PACKET_HEADER {};
+//TRADE_REQUEST, A가 B에게 거래 요청
+struct TRADE_REQUEST_PACKET : public PACKET_HEADER
+{
+	INT64 targetUUID;	//요청할 상대방 ID
+	TRADE_REQUEST_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::TRADE_REQUEST) {}
+};
 
-//TRADE_REQUEST
-struct TRADE_REQUEST_PACKET : public PACKET_HEADER {};
+//TRADE_REQUEST_NTF, B에게 A의 거래 요청 알림
+struct TRADE_REQUEST_NTF_PACKET : public PACKET_HEADER
+{
+	INT64 reqUUID;						//요청한 유저 ID
+	char reqName[MAX_USER_ID_LEN + 1];	//요청한 유저 이름
+	TRADE_REQUEST_NTF_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::TRADE_REQUEST_NTF) {}
+};
 
-//TRADE_REQUEST_NTF
-struct TRADE_REQUEST_NTF_PACKET : public PACKET_HEADER {};
+//TRADE_RESPONSE, B가 수락 / 거절함
+struct TRADE_RESPONSE_PACKET : public PACKET_HEADER
+{
+	INT64 tradeUUID;	// 본인 B의 ID를 담아서 전송
+	bool isAccept;		// 수락 / 거절
+	TRADE_RESPONSE_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::TRADE_RESPONSE) {}
+};
 
-//TRADE_RESPONSE
-struct TRADE_RESPONSE_PACKET : public PACKET_HEADER {};
+//TRADE_START_NTF, 거래 시작 패킷으로 넣었는데
+//위에 response만 받으면 될 거 같음
+//1. A는 거래 요청하는 순간 거래창을 키고, B에게 거래 수락창이 뜸
+//2. B가 수락할 시 B는 요청 User가 누구인지 아니깐 걔를 띄우고 본인도 띄운 상태로 거래창을 킴
+//3. A도 거래 수락 패킷을 받았으니까 상대 ID아니깐 그걸로 띄우고
+struct TRADE_START_NTF_PACKET : public PACKET_HEADER
+{
+	INT64 tradeUUID; //거래하는 상대방 UUID
+	TRADE_START_NTF_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::TRADE_START_NTF) {}
+};
 
-//TRADE_START_NTF
-struct TRADE_START_NTF_PACKET : public PACKET_HEADER {};
+//TRADE_ITEM_UPDATE, 아이템을 올리거나 뺄 때 전송됨
+struct TRADE_ITEM_UPDATE_PACKET : public PACKET_HEADER
+{
+	INT32 index;	//인벤 슬룻 번호
+	INT32 itemID;	//아이템 ID 0이면 취소
+	TRADE_ITEM_UPDATE_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::TRADE_ITEM_UPDATE) {}
+};
 
-//TRADE_ITEM_UPDATE
-struct TRADE_ITEM_UPDATE_PACKET : public PACKET_HEADER {};
+//TRADE_ITEM_NTF, 상대의 아이템 패킷(상대가 아이템 올리면 이게 옴)
+struct TRADE_ITEM_NTF_PACKET : public PACKET_HEADER
+{
+	INT32 index;	//인벤 슬룻 번호
+	INT32 itemID;	//아이템 ID
+	TRADE_ITEM_NTF_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::TRADE_ITEM_NTF) {}
+};
 
-//TRADE_ITEM_NTF
-struct TRADE_ITEM_NTF_PACKET : public PACKET_HEADER {};
+//TRADE_LOCK, 교환 확정 버튼 클릭
+struct TRADE_LOCK_PACKET : public PACKET_HEADER
+{
+	bool isLock;
+	TRADE_LOCK_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::TRADE_LOCK) {}
+};
 
-//TRADE_LOCK 
-struct TRADE_LOCK_PACKET : public PACKET_HEADER {};
+//TRADE_LOCK_NTF, 상대의 lock 상태 받음
+struct TRADE_LOCK_NTF_PACKET : public PACKET_HEADER
+{
+	bool isLock;
+	TRADE_LOCK_NTF_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::TRADE_LOCK_NTF) {}
+};
 
-//TRADE_LOCK_NTF
-struct TRADE_LOCK_NTF_PACKET : public PACKET_HEADER {};
+//TRADE_CONFIRM, 거래 확정 버튼 클릭
+struct TRADE_CONFIRM_PACKET : public PACKET_HEADER
+{
+	bool isConfirm;
+	TRADE_CONFIRM_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::TRADE_CONFIRM) {}
+};
 
-//TRADE_CONFIRM
-struct TRADE_CONFIRM_PACKET : public PACKET_HEADER {};
-
-//TRADE_RESULT
-struct TRADE_RESULT_PACKET : public PACKET_HEADER {};
+//TRADE_RESULT, 레디스 트랜잭션 결과
+struct TRADE_RESULT_PACKET : public PACKET_HEADER
+{
+	bool isSuccess;	//true면 갱신, false면 실패
+	TRADE_RESULT_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::TRADE_RESULT) {}
+};
 #pragma endregion
 
 #pragma pack(pop) //위에 설정된 패킹설정이 사라짐

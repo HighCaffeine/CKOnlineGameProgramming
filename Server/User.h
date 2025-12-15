@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Actor.h"
+#include "unity.h"
 
 class User: public Actor
 {
@@ -81,10 +82,29 @@ public:
 		return packetInfo;
 	}
 
+	void SetInventory(int index, int itemID)
+	{
+		if (0 <= index && index < INVENTORY_SIZE)
+		{
+			mInventory[index] = itemID;
+		}
+	}
+
+	int GetItemID(int index)
+	{
+		if (0 <= index && index < INVENTORY_SIZE)
+		{
+			return mInventory[index];
+		}
+
+		return 0;
+	}
 
 private:
 	bool mIsConfirm = false;
 	std::string mAuthToken;
+
+	int mInventory[INVENTORY_SIZE] = { 0, };
 	
 
 	UINT32 mPakcetDataBufferWPos = 0;

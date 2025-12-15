@@ -91,6 +91,7 @@ struct RedisInvenRes
 	int ItemSlots[INVENTORY_SIZE];
 };
 
+//거래
 struct RedisTradeReq
 {
 	int UserA, UserB;				//유저 인덱스 정보
@@ -104,4 +105,24 @@ struct RedisTradeReq
 	int ItemsBSlot[INVENTORY_SIZE];
 	int ItemsBID[INVENTORY_SIZE];
 };
+
+struct RedisTradeRes
+{
+	//단순 성공 여부만 판단, 패킷매니저 내부에서 보내주고
+	int UserIndex;
+	bool IsSuccess;
+};
+
+//상점
+struct RedisShopReq
+{
+	int AddHour;	//시간 추가, 0이면 바로 초기화
+};
+
+struct RedisShopRes
+{
+	int ItemID;
+	INT64 NextUpdateTime;
+};
+
 #pragma pack(pop) //위에 설정된 패킹설정이 사라짐

@@ -109,6 +109,8 @@ struct RedisTradeReq
 struct RedisTradeRes
 {
 	//단순 성공 여부만 판단, 패킷매니저 내부에서 보내주고
+	//클라에서는 서로 뭐 보낼지는 받았으니 그걸로 하거나
+	//인벤 요청 혹시 모르니 다시 보내주거나 
 	int UserIndex;
 	bool IsSuccess;
 };

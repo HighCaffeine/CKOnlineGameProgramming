@@ -232,7 +232,24 @@ private:
 					auto pRequest = (RedisTradeReq*)task.pData;
 					RedisTradeRes resData;
 
+					//유저 키(해쉬 키)
 
+					//유저 인벤토리 로드 map -> array
+					//hgetall -> return bool(suc -> 1)
+					
+					//a가 주는 아이템 b가 주는 아이템 서로 인벤에서 제거(배열에서만 삭제 데이터베이스에 바로 반영 X)
+					//a -> b로 아이템 넘기기 (0인 슬룻 빈칸 찾으면 거기에 바로 넣게)
+					//b -> a도 똑같이
+
+					//둘 다 정상적으로 종료 됐을 경우
+					//실제 레디스에 작성 
+					// MULTI 색션 시작 
+					// HSET함수 작성(인벤토리 다 다시 넣어줌)
+					// EXEC로 색션 종료
+					// -> 색션 내부에 있던 명령들 Dequeue해서 다 처리
+
+
+					//아래 테스크 보내는거 A용이랑, B용 둘 다 보내줘야함
 					RedisTask resTask;
 					resTask.TaskID = RedisTaskID::RESPONSE_TRADE_EXCHANGE;
 					resTask.UserIndex = task.UserIndex;

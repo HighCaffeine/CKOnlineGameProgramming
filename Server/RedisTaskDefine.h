@@ -79,6 +79,12 @@ struct RedisNoticeRes
 
 
 //인벤토리 결과물
+struct RedisInvenReq
+{
+	int UserIndex;
+	int UserID[MAX_USER_ID_LEN + 1];
+};
+
 struct RedisInvenRes
 {
 	int UserIndex;

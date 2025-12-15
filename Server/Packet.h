@@ -267,17 +267,15 @@ struct MOVE_PATH_RESPONSE_PACKET : public PACKET_HEADER
 };
 #pragma endregion
 
+
 #pragma region Shop Packet
 //SHOP_INFO
 struct SHOP_INFO_PACKET : public PACKET_HEADER {};
 #pragma endregion
-
-
 #pragma region Inventory Packet
 //INVENTORY_INFO
 struct INVENTORY_INFO_PACKET : public PACKET_HEADER {};
 #pragma endregion
-
 #pragma region Trade Packets
 
 //TRADE_REQUEST

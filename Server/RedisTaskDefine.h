@@ -82,7 +82,7 @@ struct RedisNoticeRes
 struct RedisInvenReq
 {
 	int UserIndex;
-	int UserID[MAX_USER_ID_LEN + 1];
+	char UserID[MAX_USER_ID_LEN + 1];
 };
 
 struct RedisInvenRes
@@ -97,11 +97,11 @@ struct RedisTradeReq
 	int CountA, CountB;				//각자 몇 개 보내는지
 	
 	//A 거래 데이터
-	int ItemsASlots[INVENTORY_SIZE];
-	int ItemsAIDs[INVENTORY_SIZE];
+	int ItemsASlot[INVENTORY_SIZE];
+	int ItemsAID[INVENTORY_SIZE];
 	
 	//B 거래 데이터
-	int ItemsBSlots[INVENTORY_SIZE];
-	int ITemsBIDs[INVENTORY_SIZE];
+	int ItemsBSlot[INVENTORY_SIZE];
+	int ItemsBID[INVENTORY_SIZE];
 };
 #pragma pack(pop) //위에 설정된 패킹설정이 사라짐

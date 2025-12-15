@@ -103,8 +103,8 @@ enum class  PACKET_ID : UINT16
 	TRADE_RESULT = 319,         // Server -> A, B: 거래 성공/실패 결과
 };
 
-
 #pragma pack(push,1)
+#pragma region PACKET_HEADER
 struct PACKET_HEADER
 {
 	const UINT16 PacketLength;
@@ -115,8 +115,9 @@ struct PACKET_HEADER
 	}
 };
 const UINT32 PACKET_HEADER_LENGTH = sizeof(PACKET_HEADER);
+#pragma endregion
 
-//- 로그인 요청
+#pragma region Login Packets
 const int MAX_USER_ID_LEN = 32;
 const int MAX_USER_PW_LEN = 32;
 
@@ -136,9 +137,9 @@ struct LOGIN_RESPONSE_PACKET : public PACKET_HEADER
 
 	LOGIN_RESPONSE_PACKET() : Result{ 0 }, PACKET_HEADER(sizeof(*this), PACKET_ID::LOGIN_RESPONSE) {}
 };
+#pragma endregion
 
-
-//- 룸에 들어가기 요청
+#pragma region Room Enter Packets
 //const int MAX_ROOM_TITLE_SIZE = 32;
 struct ROOM_ENTER_REQUEST_PACKET : public PACKET_HEADER
 {
@@ -172,7 +173,9 @@ struct ROOM_USER_INFO_NTF_PACKET : public PACKET_HEADER
 
 	ROOM_USER_INFO_NTF_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::ROOM_USER_INFO_NTF) {}
 };
+#pragma endregion
 
+#pragma region Player Movement Packets
 struct PLAYER_MOVEMENT_PACKET : public PACKET_HEADER
 {
 	INT64 userUUID;
@@ -192,9 +195,9 @@ struct UPDATE_PLAYER_MOVEMENT_PACKET : public PACKET_HEADER
 
 	UPDATE_PLAYER_MOVEMENT_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::UPDATE_PLAYER_MOVEMENT) {}
 };
+#pragma endregion
 
-
-//- 룸 나가기 요청
+#pragma region Room Leave Packets
 struct ROOM_LEAVE_REQUEST_PACKET : public PACKET_HEADER
 {
 	ROOM_LEAVE_REQUEST_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::ROOM_LEAVE_REQUEST) {}
@@ -214,9 +217,9 @@ struct ROOM_LEAVE_USER_NTF_PACKET : public PACKET_HEADER
 	char userID[MAX_USER_ID_LEN + 1];
 	ROOM_LEAVE_USER_NTF_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::ROOM_LEAVE_USER_NTF) {}
 };
+#pragma endregion
 
-
-// 룸 채팅
+#pragma region Room Chat Packets
 const static int MAX_CHAT_MSG_SIZE = 256;
 struct ROOM_CHAT_REQUEST_PACKET : public PACKET_HEADER
 {
@@ -241,8 +244,9 @@ struct ROOM_CHAT_NOTIFY_PACKET : public PACKET_HEADER
 
 	ROOM_CHAT_NOTIFY_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::ROOM_CHAT_NOTIFY) {}
 };
+#pragma endregion
 
-
+#pragma region Move Packets
 struct MOVE_PATH_REQUEST_PACKET : public PACKET_HEADER
 {
 	INT64 userUUID;
@@ -261,18 +265,21 @@ struct MOVE_PATH_RESPONSE_PACKET : public PACKET_HEADER
 
 	MOVE_PATH_RESPONSE_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::MOVE_PATH_RESPONSE) {}
 };
+#pragma endregion
 
-
-//상점 패킷
+#pragma region Shop Packet
 //SHOP_INFO
 struct SHOP_INFO_PACKET : public PACKET_HEADER {};
+#pragma endregion
 
-//인벤토리패킷
+
+#pragma region Inventory Packet
 //INVENTORY_INFO
 struct INVENTORY_INFO_PACKET : public PACKET_HEADER {};
+#pragma endregion
 
+#pragma region Trade Packets
 
-//거래용 패킷들
 //TRADE_REQUEST
 struct TRADE_REQUEST_PACKET : public PACKET_HEADER {};
 
@@ -295,7 +302,7 @@ struct TRADE_ITEM_UPDATE_PACKET : public PACKET_HEADER {};
 struct TRADE_ITEM_NTF_PACKET : public PACKET_HEADER {};
 
 //TRADE_LOCK 
-struct TRADE_LOCK _PACKET : public PACKET_HEADER {};
+struct TRADE_LOCK_PACKET : public PACKET_HEADER {};
 
 //TRADE_LOCK_NTF
 struct TRADE_LOCK_NTF_PACKET : public PACKET_HEADER {};
@@ -305,6 +312,7 @@ struct TRADE_CONFIRM_PACKET : public PACKET_HEADER {};
 
 //TRADE_RESULT
 struct TRADE_RESULT_PACKET : public PACKET_HEADER {};
+#pragma endregion
 
 #pragma pack(pop) //위에 설정된 패킹설정이 사라짐
 

@@ -283,7 +283,7 @@ private:
 							}
 							if (pRequest->ItemsBSlot[i] >= 0)
 							{
-								arrayB[pRequest->ItemsASlot[i]] = EMPTYITEM;
+								arrayB[pRequest->ItemsBSlot[i]] = EMPTYITEM;
 							}
 						}
 
@@ -324,11 +324,22 @@ private:
 						}
 						else // 실제 DB적용
 						{
+							redisReply* reply = mConn.redisCmd("MULTI");
+							freeReplyObject(reply);
+
 							for (int i = 0; i < INVENTORY_SIZE; i++)
 							{
-								mConn.hset(Aid, std::to_string(i), std::to_string(arrayA[i]), ret);
-								mConn.hset(Bid, std::to_string(i), std::to_string(arrayB[i]), ret);
+								/*mConn.hset(Aid, std::to_string(i), std::to_string(arrayA[i]), ret);
+								mConn.hset(Bid, std::to_string(i), std::to_string(arrayB[i]), ret);*/
+
+								//트랜잭션 사용으로 raw command 사용함
+								// -> 리턴값 달라서 hset으로 하면 오류날 수도 있음
+								mConn.redisCmd("HSET %s %d %d", Aid.c_str(), i, arrayA[i]);
+								mConn.redisCmd("HSET %s %d %d", Bid.c_str(), i, arrayB[i]);
 							}
+
+							redisReply* reply = mConn.redisCmd("EXEC");
+							freeReplyObject(reply);
 
 							resData.IsSuccess = true;
 							RedisTask resTask;
@@ -349,23 +360,6 @@ private:
 						}
 						
 					}
-
-					//유저 인벤토리 로드 map -> array
-					//hgetall -> return bool(suc -> 1)
-					
-					//a가 주는 아이템 b가 주는 아이템 서로 인벤에서 제거(배열에서만 삭제 데이터베이스에 바로 반영 X)
-					//a -> b로 아이템 넘기기 (0인 슬룻 빈칸 찾으면 거기에 바로 넣게)
-					//b -> a도 똑같이
-
-					//둘 다 정상적으로 종료 됐을 경우
-					//실제 레디스에 작성 
-					// MULTI 색션 시작 
-					// HSET함수 작성(인벤토리 다 다시 넣어줌)
-					// EXEC로 색션 종료
-					// -> 색션 내부에 있던 명령들 Dequeue해서 다 처리
-
-
-					//아래 테스크 보내는거 A용이랑, B용 둘 다 보내줘야함
 				}
 				else if (task.TaskID == RedisTaskID::REQUEST_SHOP_UPDATE)
 				{

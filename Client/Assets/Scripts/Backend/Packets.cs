@@ -31,6 +31,26 @@ public enum E_PACKET
     MOVE_PATH_REQUEST = 225,
     MOVE_PATH_RESPONSE = 226,
     MOVE_PATH_NOTIFY = 227,
+
+    //인벤 / 상점용
+    INVENTORY_INFO = 301,       // 접속갱신 시 인벤토리 정보 전송
+    SHOP_INFO = 302,            // 상점 정보 - 현재 판매 아이템, 다음 갱신 시간
+
+    //거래용
+    TRADE_REQUEST = 310,        // A -> Server: 교환 요청
+    TRADE_REQUEST_NTF = 311,    // Server -> B: A가 요청함 
+    TRADE_RESPONSE = 312,       // B -> Server: 거래 수락 / 거절
+    TRADE_START_NTF = 313,      // Server -> A, 
+                                // A : 거래 거절 시 거래창 닫기 B: 거래창 열기
+
+    TRADE_ITEM_UPDATE = 314,    // A,B -> Server: 아이템 등록 
+    TRADE_ITEM_NTF = 315,       // Server -> A,B: A / B가 아이템 올렸으니 업데이트 
+    TRADE_LOCK = 316,           // A,B -> Server: 아이템 확정 
+                                //(2번째 온 애 거를 기준으로 confirm 패킷 전송)
+    TRADE_LOCK_NTF = 317,       // Server -> A,B: A / B의 Lock 상태 받음
+
+    TRADE_CONFIRM = 318,        // A,B -> Server: 최종 교환 버튼
+    TRADE_RESULT = 319,         // Server -> A, B: 거래 성공/실패 결과
 }
 
 [StructLayout(LayoutKind.Sequential, Size = 16)]
@@ -225,4 +245,75 @@ struct P_MovePathResponse
 
     [MarshalAs(UnmanagedType.I2)]
     public short path_count;
+}
+
+
+//거래 패킷
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct P_TradeRequest
+{
+    [MarshalAs(UnmanagedType.I8)]
+    public long targetUUID;
+}
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct P_TradeRequestNtf
+{
+    [MarshalAs(UnmanagedType.I8)]
+    public long requesterUUID;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 33)]
+    public string requesterName;
+}
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct P_TradeResponse
+{
+    [MarshalAs(UnmanagedType.I8)]
+    public long requesterUUID;
+    [MarshalAs(UnmanagedType.I1)]
+    public bool isAccept;
+}
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct P_TradeStartNtf
+{
+    [MarshalAs(UnmanagedType.I8)]
+    public long partnerUUID;
+}
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct P_TradeItemUpdate
+{
+    [MarshalAs(UnmanagedType.I4)]
+    public int slotIndex;
+    [MarshalAs(UnmanagedType.I4)]
+    public int itemID;
+}
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct P_TradeItemNtf
+{
+    [MarshalAs(UnmanagedType.I4)]
+    public int slotIndex;
+    [MarshalAs(UnmanagedType.I4)]
+    public int itemID;
+}
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct P_TradeLock
+{
+    [MarshalAs(UnmanagedType.I1)]
+    public bool isLocked;
+}
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct P_TradeLockNtf
+{
+    [MarshalAs(UnmanagedType.I1)]
+    public bool isLocked;
+}
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct P_TradeConfirm
+{
+    [MarshalAs(UnmanagedType.I1)]
+    public bool isConfirmed;
+}
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct P_TradeResult
+{
+    [MarshalAs(UnmanagedType.I1)]
+    public bool isSuccess;
 }

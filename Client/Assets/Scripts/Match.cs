@@ -1,16 +1,17 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Runtime.InteropServices;
 
 public unsafe class Match : MonoBehaviour, IPacketReceiver
 {
-    public static Match Current;
+    public static Match Instance;
     public Dictionary<long, Player> Players;
 
     void Awake()
     {
         Debug.Log("Match started");
-        Current = this;
+        Instance = this;
         Players = new Dictionary<long, Player>();
         Client.TCP.AddPacketReceiver(this);
         Client.UDP.AddPacketReceiver(this);
@@ -101,28 +102,59 @@ public unsafe class Match : MonoBehaviour, IPacketReceiver
                 }
                 break;
             case E_PACKET.INVENTORY_INFO:
+                var invenInfo = UnsafeCode.ByteArrayToStructure<P_InventoryInfo>(packet.data);
+                Inventory.Instance.SetInventory(invenInfo.itemIDs);
+
+                Debug.Log("[Inventory] Update");
                 break;
             case E_PACKET.SHOP_INFO:
-                break;
-            case E_PACKET.TRADE_REQUEST:
+                var shopInfo = UnsafeCode.ByteArrayToStructure<P_ShopInfo>(packet.data);
+                ShopManager.Instance.SetTargetShopTime(shopInfo.nextUpdateTime, shopInfo.itemID);
+
+                Debug.Log($"[Shop] Update ItemID: {shopInfo.itemID}, Next Update Time: {shopInfo.nextUpdateTime}");
                 break;
             case E_PACKET.TRADE_REQUEST_NTF:
-                break;
-            case E_PACKET.TRADE_RESPONSE:
+                var reqNtf = UnsafeCode.ByteArrayToStructure<P_TradeRequestNtf>(packet.data);
+                TradeManager.Instance.ShowRequestPopup(reqNtf.requesterName, reqNtf.requesterUUID);
+
+                Debug.Log($"[Trade] Trade Request From {reqNtf.requesterName}({reqNtf.requesterUUID})");
                 break;
             case E_PACKET.TRADE_START_NTF:
-                break;
-            case E_PACKET.TRADE_ITEM_UPDATE:
+                var startNtf = UnsafeCode.ByteArrayToStructure<P_TradeStartNtf>(packet.data);
+                TradeManager.Instance.OpenTradeWindow(startNtf.partnerUUID);
+
+                Debug.Log($"[Trade] Trade Start With {startNtf.partnerUUID} User");
                 break;
             case E_PACKET.TRADE_ITEM_NTF:
-                break;
-            case E_PACKET.TRADE_LOCK:
+                var itemNtf = UnsafeCode.ByteArrayToStructure<P_TradeItemNtf>(packet.data);
+                TradeManager.Instance.SetPartnerItem(itemNtf.slotIndex, itemNtf.itemID);
+
+                Debug.Log($"[Trade] Add {itemNtf.itemID} item to Partner {itemNtf.slotIndex} Slot");
                 break;
             case E_PACKET.TRADE_LOCK_NTF:
-                break;
-            case E_PACKET.TRADE_CONFIRM:
+                var lockNtf = UnsafeCode.ByteArrayToStructure<P_TradeLockNtf>(packet.data);
+                TradeManager.Instance.SetPartnerLockState(lockNtf.isLocked);
+                TradeManager.Instance.CheckConfirmState();
+
+                Debug.Log("[Trade] Partner Trade Lock State: " + lockNtf.isLocked);
                 break;
             case E_PACKET.TRADE_RESULT:
+                var result = UnsafeCode.ByteArrayToStructure<P_TradeResult>(packet.data);
+                string msg = string.Empty;
+
+                if (result.isSuccess)
+                {
+                    Debug.Log("[Trade] Trade Success");
+                    msg = "[Trade] Trade Success";
+                }
+                else
+                {
+                    //실패 사유는 없음
+                    Debug.Log("[Trade] Trade Fail");
+                    msg = "[Trade] Trade Fail";
+                }
+
+                TradeManager.Instance.CloseTradeWindow(msg);
                 break;
 
             default:

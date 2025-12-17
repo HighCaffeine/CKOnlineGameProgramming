@@ -43,6 +43,7 @@ public class MainMenuGUI : MonoBehaviour, IPacketReceiver
         P_LoginReq loginReq = default;
         loginReq.userID = inputName;
         loginReq.userPW = inputName;
+        Client.myName = inputName;
         Client.TCP.SendPacket2(E_PACKET.LOGIN_REQUEST, loginReq);
     }
 }

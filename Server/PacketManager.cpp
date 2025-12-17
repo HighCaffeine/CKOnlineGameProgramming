@@ -31,6 +31,9 @@ void PacketManager::Init(const UINT32 maxClient_)
 	mRecvFuntionDictionary[(int)RedisTaskID::RESPONSE_LOAD_INVENTORY] = &PacketManager::ProcessInventoryDBResult;
 	mRecvFuntionDictionary[(int)RedisTaskID::RESPONSE_TRADE_EXCHANGE] = &PacketManager::ProcessTradeDBResult;
 	mRecvFuntionDictionary[(int)RedisTaskID::RESPONSE_SHOP_UPDATE] = &PacketManager::ProcessShopUpdateDBResult;
+	mRecvFuntionDictionary[(int)RedisTaskID::RESPONSE_SHOP_BUY] = &PacketManager::ProcessShopBuyDBResult;
+
+	mRecvFuntionDictionary[(int)PACKET_ID::SHOP_BUY_REQUEST] = &PacketManager::ProcessShopBuyRequest;
 
 	//거래 패킷
 	mRecvFuntionDictionary[(int)PACKET_ID::TRADE_REQUEST] = &PacketManager::ProcessTradeRequest;
@@ -597,6 +600,25 @@ void PacketManager::ProcessShopBuyRequest(UINT32 clientIndex_, UINT16 packetSize
 	task.DataSize = sizeof(RedisShopBuyReq);
 	task.pData = new char[task.DataSize];
 	mRedisMgr->PushTask(task);
+}
+
+void PacketManager::ProcessShopBuyDBResult(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
+{
+	auto pBody = (RedisShopBuyRes*)pPacket_;
+
+	SHOP_BUY_RESPONSE_PACKET pkt;
+	pkt.isSuccess = pBody->isSuccess;
+
+	SendPacketFunc(clientIndex_, sizeof(pkt), (char*)&pkt);
+
+	if (pkt.isSuccess)
+	{
+		printf("[Shop] Buy Success User: %d\n", clientIndex_);
+	}
+	else
+	{
+		printf("[Shop] Buy Failed User: %d\n", clientIndex_);
+	}
 }
 
 Vector3 stringToVector3(const std::string& s) {

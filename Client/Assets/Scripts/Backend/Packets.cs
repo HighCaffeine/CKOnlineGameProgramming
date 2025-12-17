@@ -35,7 +35,8 @@ public enum E_PACKET
     //인벤 / 상점용
     INVENTORY_INFO = 301,       // 접속갱신 시 인벤토리 정보 전송
     SHOP_INFO = 302,            // 상점 정보 - 현재 판매 아이템, 다음 갱신 시간
-    SHOP_BUY_REQUEST = 303,     // 상점 아이템 구매 요청
+    SHOP_BUY_REQUEST = 303,     //아이템 구매 요청
+    SHOP_BUY_RESPONSE = 304,	//아이템 구매 결과
 
     //거래용
     TRADE_REQUEST = 310,        // A -> Server: 교환 요청
@@ -277,6 +278,13 @@ public struct P_ShopBuyRequest
     public long userUUID;
     [MarshalAs(UnmanagedType.I4)]
     public int itemID;
+}
+
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct P_ShopBuyResponse
+{
+    [MarshalAs(UnmanagedType.I1)]
+    public bool isSuccess;
 }
 
 //거래 패킷

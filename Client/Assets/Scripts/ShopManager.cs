@@ -9,6 +9,8 @@ public class ShopManager : MonoBehaviour
     public UnityEngine.UI.Image targetImage;    //판매 아이템
     private long targetShopTime;   // 서버에서 받은 갱신 시간 (Unix Timestamp)
 
+    public Transform itemBuyDisablePanel;   //구매 완료용 패널
+
     private int currentItemID;
 
     private void Awake()
@@ -50,7 +52,15 @@ public class ShopManager : MonoBehaviour
 
     public void UpdateItem()
     {
-        targetImage.sprite = ItemDataBase.Instance.GetItemSprite(currentItemID);
+        Sprite s = ItemDataBase.Instance.GetItemSprite(currentItemID);
+        targetImage.sprite = s;
+
+        if (s != null) itemBuyDisablePanel.gameObject.SetActive(false);
+    }
+
+    public void SetItemBuyState(bool isSuccess)
+    {
+        if (isSuccess) itemBuyDisablePanel.gameObject.SetActive(true);
     }
 
     public void BuyItem()

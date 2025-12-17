@@ -52,6 +52,7 @@ public unsafe class Match : MonoBehaviour, IPacketReceiver
     public unsafe void OnPacketReceived(Packet packet)
     {
         ushort packetId = packet.pbase.packet_id;
+        string msg = string.Empty;
         switch ((E_PACKET)packetId)
         {
             case E_PACKET.ROOM_ENTER_RESPONSE:
@@ -113,6 +114,14 @@ public unsafe class Match : MonoBehaviour, IPacketReceiver
 
                 Debug.Log($"[Shop] Update ItemID: {shopInfo.itemID}, Next Update Time: {shopInfo.nextUpdateTime}");
                 break;
+            case E_PACKET.SHOP_BUY_RESPONSE:
+                var buyInfo = UnsafeCode.ByteArrayToStructure<P_ShopBuyResponse>(packet.data);
+                ShopManager.Instance.SetItemBuyState(buyInfo.isSuccess);
+
+                msg = buyInfo.isSuccess ? "Success" : "Failed";
+
+                Debug.Log($"[Shop] Item Buy Result : {msg}");
+                break;
             case E_PACKET.TRADE_REQUEST_NTF:
                 var reqNtf = UnsafeCode.ByteArrayToStructure<P_TradeRequestNtf>(packet.data);
                 TradeManager.Instance.ShowRequestPopup(reqNtf.requesterName, reqNtf.requesterUUID);
@@ -140,7 +149,7 @@ public unsafe class Match : MonoBehaviour, IPacketReceiver
                 break;
             case E_PACKET.TRADE_RESULT:
                 var result = UnsafeCode.ByteArrayToStructure<P_TradeResult>(packet.data);
-                string msg = string.Empty;
+                msg = string.Empty;
 
                 if (result.isSuccess)
                 {

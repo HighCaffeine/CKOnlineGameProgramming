@@ -397,10 +397,17 @@ void PacketManager::ProcessEnterRoom(UINT32 clientIndex_, UINT16 packetSize_, ch
 		task.pData = new char[task.DataSize];
 		memcpy(task.pData, &req, task.DataSize);
 		task.UserIndex = clientIndex_;
-
 		mRedisMgr->PushTask(task);
-
 		printf("[Debug] Room Enter Success -> Request Inventory Load for User %d\n", clientIndex_);
+
+		int cmdValue = -2;
+		RedisTask shopReq;
+		shopReq.TaskID = RedisTaskID::REQUEST_SHOP_UPDATE;
+		shopReq.DataSize = sizeof(int);
+		shopReq.pData = new char[sizeof(int)];
+		memcpy(shopReq.pData, &cmdValue, sizeof(int));
+		shopReq.UserIndex = clientIndex_;
+		mRedisMgr->PushTask(shopReq);
 	}
 
 	SHOP_INFO_PACKET shopPkt;
@@ -657,6 +664,14 @@ void PacketManager::ProcessShopBuyDBResult(UINT32 clientIndex_, UINT16 packetSiz
 	{
 		printf("[Shop] Buy Failed User: %d\n", clientIndex_);
 	}
+
+	int cmdValue = -1;
+	RedisTask task;
+	task.TaskID = RedisTaskID::REQUEST_SHOP_UPDATE;
+	task.DataSize = sizeof(int);
+	task.pData = new char[sizeof(int)];
+	memcpy(task.pData, &cmdValue, sizeof(int));
+	mRedisMgr->PushTask(task);
 }
 
 Vector3 stringToVector3(const std::string& s) {

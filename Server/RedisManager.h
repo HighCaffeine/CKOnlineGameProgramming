@@ -116,6 +116,7 @@ private:
 			if (auto task = TakeRequestTask(); task.TaskID != RedisTaskID::INVALID)
 			{
 				isIdle = false;
+				static bool isBuying = false;
 
 				if (task.TaskID == RedisTaskID::REQUEST_LOGIN)
 				{
@@ -430,6 +431,11 @@ private:
 					}
 					else if (commandValue == -1)	//시간 체크 processpacket에서 요청
 					{
+						if (isBuying)
+						{
+							isBuying = false;
+							needDBUpdate = true;
+						}
 						if (storedNextTime == 0 || (UINT64)now >= storedNextTime)
 						{
 							currentItemID = 101 + (rand() % 5); // 아이템 변경
@@ -438,6 +444,10 @@ private:
 							needDBUpdate = true;
 							printf("[Shop] Daily Reset\n");
 						}
+					}
+					else if (commandValue == -2)	//무조건 업데이트
+					{
+						needDBUpdate = true;
 					}
 
 					// 변경사항 저장, 브로드캐스트
@@ -506,6 +516,7 @@ private:
 						mConn.hset("game:shop_state", "current_item", "0", ret);
 
 						resData.isSuccess = true;
+						isBuying = true;
 						printf("[Shop] User(%s) Buy Item(%d) at Slot(%d)\n", pRequest->UserID, pRequest->itemID, emptySlotIndex);
 					}
 					else

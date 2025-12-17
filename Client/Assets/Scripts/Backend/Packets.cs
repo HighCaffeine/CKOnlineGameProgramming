@@ -248,6 +248,27 @@ struct P_MovePathResponse
 }
 
 
+//인벤토리 패킷
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct P_InventoryInfo
+{
+    [MarshalAs(UnmanagedType.I8)]
+    public long userUUID;
+
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 5)]
+    public int[] itemIDs;
+}
+
+//상점 패킷
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct P_ShopInfo
+{
+    [MarshalAs(UnmanagedType.I4)]
+    public int itemID;
+    [MarshalAs(UnmanagedType.I8)]
+    public long nextUpdateTime;
+}
+
 //거래 패킷
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
 public struct P_TradeRequest

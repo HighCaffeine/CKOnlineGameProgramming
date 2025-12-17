@@ -100,6 +100,30 @@ public unsafe class Match : MonoBehaviour, IPacketReceiver
                     }
                 }
                 break;
+            case E_PACKET.INVENTORY_INFO:
+                break;
+            case E_PACKET.SHOP_INFO:
+                break;
+            case E_PACKET.TRADE_REQUEST:
+                break;
+            case E_PACKET.TRADE_REQUEST_NTF:
+                break;
+            case E_PACKET.TRADE_RESPONSE:
+                break;
+            case E_PACKET.TRADE_START_NTF:
+                break;
+            case E_PACKET.TRADE_ITEM_UPDATE:
+                break;
+            case E_PACKET.TRADE_ITEM_NTF:
+                break;
+            case E_PACKET.TRADE_LOCK:
+                break;
+            case E_PACKET.TRADE_LOCK_NTF:
+                break;
+            case E_PACKET.TRADE_CONFIRM:
+                break;
+            case E_PACKET.TRADE_RESULT:
+                break;
 
             default:
                 break;

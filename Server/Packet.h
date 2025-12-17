@@ -111,8 +111,8 @@ struct PACKET_HEADER
 {
 	const UINT16 PacketLength;
 	const UINT16 PacketId;
-	const UINT8 Type = 0; //압축여부 암호화여부 등 속성을 알아내는 값
-	PACKET_HEADER(UINT16 PacketLength, PACKET_ID PacketId, UINT8 Type = 0) : PacketLength{ PacketLength }, PacketId{ (UINT16)PacketId }, Type{ Type }
+	const UINT8 Type; //압축여부 암호화여부 등 속성을 알아내는 값
+	PACKET_HEADER(UINT16 PacketLength, PACKET_ID PacketId, UINT8 Type = 0) : PacketLength{ PacketLength }, PacketId{ (UINT16)PacketId }, Type{Type}
 	{
 	}
 };

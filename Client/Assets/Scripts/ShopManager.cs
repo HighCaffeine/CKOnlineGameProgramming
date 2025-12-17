@@ -77,6 +77,6 @@ public class ShopManager : MonoBehaviour
         P_ShopBuyRequest pkt = new P_ShopBuyRequest();
         pkt.itemID = currentItemID;
         pkt.userUUID = LocalPlayerInfo.ID;
-        Client.TCP.SendPacket(E_PACKET.SHOP_BUY_REQUEST, pkt);
+        Client.TCP.SendPacket2(E_PACKET.SHOP_BUY_REQUEST, pkt);
     }
 }

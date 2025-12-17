@@ -120,22 +120,30 @@ private:
 				if (task.TaskID == RedisTaskID::REQUEST_LOGIN)
 				{
 					auto pRequest = (RedisLoginReq*)task.pData;
-					
+
 					RedisLoginRes bodyData;
+					memset(&bodyData, 0, sizeof(RedisLoginRes));
 					bodyData.Result = (UINT16)ERROR_CODE::LOGIN_USER_INVALID_PW;
 
 					std::string value;
 					if (mConn.get(pRequest->UserID, value))
 					{
-						bodyData.Result = (UINT16)ERROR_CODE::NONE;
-
 						if (value.compare(pRequest->UserPW) == 0)
 						{
 							bodyData.Result = (UINT16)ERROR_CODE::NONE;
 							CopyUserID(bodyData.UserID, pRequest->UserID);
 						}
+						else
+						{
+							printf("[Redis] PW Mismatch. Req:%s / DB:%s\n", pRequest->UserPW, value.c_str());
+						}
 					}
-					
+					else
+					{
+						// 계정이 없는 경우 (필요하면 여기서 자동 가입 로직 추가)
+						printf("[Redis] User Not Found: %s\n", pRequest->UserID);
+					}
+
 					RedisTask resTask;
 					resTask.UserIndex = task.UserIndex;
 					resTask.TaskID = RedisTaskID::RESPONSE_LOGIN;
@@ -162,6 +170,7 @@ private:
 
 					//레디스 해쉬 키값
 					std::string id = "u:" + std::string(pRequest->UserID) + ":inven";
+					std::cout << id << std::endl;
 					std::map<std::string, std::string> inven;
 
 					//getall로 가져오고, 안에 안비었으면 내부 처리
@@ -196,7 +205,7 @@ private:
 						
 						//랜덤 인덱스 1
 						std::uniform_int_distribution<int> dis1(0, 4); firstIndex = dis1(gen);
-						first = nums[first];
+						first = nums[firstIndex];
 
 						//맨 뒤랑 교체
 						std::swap(nums[firstIndex], nums[4]);
@@ -403,20 +412,21 @@ private:
 						needDBUpdate = true;
 						printf("[Shop] Reset\n");
 					}
-					else if (commandValue > 0)	// /t add 1
+					else if (commandValue > 0)
 					{
-						//초기화 시간 지남
-						if ((UINT64)now > storedNextTime)
+						UINT64 reduceSeconds = (UINT64)commandValue * 60;
+
+						if (storedNextTime <= (UINT64)now + reduceSeconds)
 						{
-							finalNextTime = (UINT64)now + (commandValue * 3600);
+							finalNextTime = (UINT64)now - 1;
 						}
 						else
 						{
-							finalNextTime = storedNextTime + (commandValue * 3600);
+							finalNextTime = storedNextTime - reduceSeconds;
 						}
 
 						needDBUpdate = true;
-						printf("[Shop] Add %d hours.\n", commandValue);
+						printf("[Shop] Time Fast Forward: %d mins (Next Update: %lld)\n", commandValue, finalNextTime);
 					}
 					else if (commandValue == -1)	//시간 체크 processpacket에서 요청
 					{
@@ -436,7 +446,10 @@ private:
 						uint32_t ret;
 						mConn.hset("game:shop_state", "current_item", std::to_string(currentItemID), ret);
 						mConn.hset("game:shop_state", "next_update_ts", std::to_string(finalNextTime), ret);
+					}
 
+					if (needDBUpdate || commandValue != -1)
+					{
 						RedisShopRes resData;
 						resData.ItemID = currentItemID;
 						resData.NextUpdateTime = finalNextTime;
@@ -490,8 +503,10 @@ private:
 						uint32_t ret;
 						mConn.hset(invenKey, std::to_string(emptySlotIndex), std::to_string(pRequest->itemID), ret);
 
+						mConn.hset("game:shop_state", "current_item", "0", ret);
+
 						resData.isSuccess = true;
-						printf("[Shop] User(%s) Bought Item(%d) at Slot(%d)\n", pRequest->UserID, pRequest->itemID, emptySlotIndex);
+						printf("[Shop] User(%s) Buy Item(%d) at Slot(%d)\n", pRequest->UserID, pRequest->itemID, emptySlotIndex);
 					}
 					else
 					{

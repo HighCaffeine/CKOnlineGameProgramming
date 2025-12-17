@@ -42,7 +42,7 @@ public class TradeManager : MonoBehaviour
         P_TradeRequest pkt = new P_TradeRequest();
         pkt.targetUUID = targetUUID;
 
-        Client.TCP.SendPacket(E_PACKET.TRADE_REQUEST, pkt);
+        Client.TCP.SendPacket2(E_PACKET.TRADE_REQUEST, pkt);
     }
     public void OnClickAccept()
     {
@@ -64,7 +64,7 @@ public class TradeManager : MonoBehaviour
         pkt.slotIndex = slotIndex;
         pkt.itemID = itemID;
 
-        Client.TCP.SendPacket(E_PACKET.TRADE_ITEM_UPDATE, pkt);
+        Client.TCP.SendPacket2(E_PACKET.TRADE_ITEM_UPDATE, pkt);
 
         if (myTradeInventory != null)
         {
@@ -94,7 +94,7 @@ public class TradeManager : MonoBehaviour
         P_TradeLock pkt = new P_TradeLock();
         pkt.isLocked = true;
 
-        Client.TCP.SendPacket(E_PACKET.TRADE_LOCK, pkt);
+        Client.TCP.SendPacket2(E_PACKET.TRADE_LOCK, pkt);
         CheckConfirmState();
     }
 
@@ -103,7 +103,7 @@ public class TradeManager : MonoBehaviour
         P_TradeConfirm pkt = new P_TradeConfirm();
         pkt.isConfirmed = true;
 
-        Client.TCP.SendPacket(E_PACKET.TRADE_CONFIRM, pkt);
+        Client.TCP.SendPacket2(E_PACKET.TRADE_CONFIRM, pkt);
         if (myConfirmButton) myConfirmButton.interactable = false;
     }
     public void SendResponse(bool isAccept)
@@ -112,7 +112,7 @@ public class TradeManager : MonoBehaviour
         pkt.requesterUUID = requestSenderUUID;
         pkt.isAccept = isAccept;
 
-        Client.TCP.SendPacket(E_PACKET.TRADE_RESPONSE, pkt);
+        Client.TCP.SendPacket2(E_PACKET.TRADE_RESPONSE, pkt);
     }
 
     #endregion

@@ -96,6 +96,8 @@ private:
 		
 	std::function<void(int, char*)> mSendMQDataFunc;
 
+	int mCurrentShopItemID = 101;
+	INT64 mNextShopUpdateTime = 0;
 
 	bool mIsRunProcessThread = false;
 	

@@ -68,6 +68,14 @@ bool PacketManager::Run()
 		return false;
 	}
 
+	int cmdValue = -1;
+	RedisTask task;
+	task.TaskID = RedisTaskID::REQUEST_SHOP_UPDATE;
+	task.DataSize = sizeof(int);
+	task.pData = new char[sizeof(int)];
+	memcpy(task.pData, &cmdValue, sizeof(int));
+	mRedisMgr->PushTask(task);
+
 	//이 부분을 패킷 처리 부분으로 이동 시킨다.
 	mIsRunProcessThread = true;
 	mProcessThread = std::thread([this]() { ProcessPacket(); });
@@ -228,10 +236,16 @@ void PacketManager::ProcessPacket()
 
 void PacketManager::ProcessRecvPacket(const UINT32 clientIndex_, const UINT16 packetId_, const UINT16 packetSize_, char* pPacket_)
 {
+	printf("[Debug] Packet Received. Index: %d, ID: %d, Size: %d\n", clientIndex_, packetId_, packetSize_);
+
 	auto iter = mRecvFuntionDictionary.find(packetId_);
 	if (iter != mRecvFuntionDictionary.end())
 	{
 		(this->*(iter->second))(clientIndex_, packetSize_, pPacket_);
+	}
+	else
+	{
+		printf("[Error] Unregistered Packet ID: %d\n", packetId_);
 	}
 
 }
@@ -315,26 +329,6 @@ void PacketManager::ProcessLoginDBResult(UINT32 clientIndex_, UINT16 packetSize_
 	// Unity3D 대응용
 	loginResPacket.Result = clientIndex_;
 	SendPacketFunc(clientIndex_, sizeof(LOGIN_RESPONSE_PACKET), (char*)&loginResPacket);
-
-	//인벤토리 처리
-	if (pBody->Result == (UINT16)ERROR_CODE::NONE)
-	{
-		auto pUser = mUserManager->GetUserByConnIdx(clientIndex_);
-
-		RedisInvenReq req;
-		req.UserIndex = clientIndex_;
-
-		strncpy_s(req.UserID, pBody->UserID, MAX_USER_ID_LEN);
-
-		RedisTask task;
-		task.TaskID = RedisTaskID::REQUEST_LOAD_INVENTORY;
-		task.DataSize = sizeof(RedisInvenRes);
-		task.pData = new char[task.DataSize];
-		memcpy(task.pData, &req, task.DataSize);
-
-		//다시 인벤토리 업데이트 요청으로 ProcessInventoryDBResult로 처리
-		mRedisMgr->PushTask(task);
-	}
 }
 
 void PacketManager::ProcessNoticeDBResult(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
@@ -387,7 +381,33 @@ void PacketManager::ProcessEnterRoom(UINT32 clientIndex_, UINT16 packetSize_, ch
 
 	// 방안 유저들에게 입장하는 유저 정보 전송
 	pRoom->NotifyUserEnter(clientIndex_, pReqUser->GetUserId());
-	
+
+	//인벤토리 처리
+	if (enterResult == (UINT16)ERROR_CODE::NONE)
+	{
+		RedisInvenReq req;
+		memset(&req, 0, sizeof(RedisInvenReq));
+
+		req.UserIndex = clientIndex_;
+		strncpy_s(req.UserID, MAX_USER_ID_LEN + 1, pReqUser->GetUserId().c_str(), _TRUNCATE);
+
+		RedisTask task;
+		task.TaskID = RedisTaskID::REQUEST_LOAD_INVENTORY;
+		task.DataSize = sizeof(RedisInvenReq);
+		task.pData = new char[task.DataSize];
+		memcpy(task.pData, &req, task.DataSize);
+		task.UserIndex = clientIndex_;
+
+		mRedisMgr->PushTask(task);
+
+		printf("[Debug] Room Enter Success -> Request Inventory Load for User %d\n", clientIndex_);
+	}
+
+	SHOP_INFO_PACKET shopPkt;
+	shopPkt.currentItemID = mCurrentShopItemID;
+	shopPkt.nextUpdateTime = mNextShopUpdateTime;
+
+	SendPacketFunc(clientIndex_, sizeof(shopPkt), (char*)&shopPkt);
 }
 
 
@@ -515,7 +535,7 @@ void PacketManager::ProcessRoomChatMessage(UINT32 clientIndex_, UINT16 packetSiz
 
 		return;
 	}
-		
+
 	SendPacketFunc(clientIndex_, sizeof(ROOM_CHAT_RESPONSE_PACKET), (char*)&roomChatResPacket);
 
 	pRoom->NotifyChat(clientIndex_, reqUser->GetUserId().c_str(), pRoomChatReqPacketet->Message);		
@@ -526,18 +546,25 @@ void PacketManager::ProcessInventoryDBResult(UINT32 clientIndex_, UINT16 packetS
 	auto pBody = (RedisInvenRes*)pPacket_;
 	auto pUser = mUserManager->GetUserByConnIdx(clientIndex_);
 
+	if (pUser == nullptr)
+	{
+		printf("[Error] ProcessInventoryDBResult: User Not Found. Index: %d\n", clientIndex_);
+		return;
+	}
+
 	INVENTORY_INFO_PACKET p;
 	p.userUUID = clientIndex_;
 
 	for (int i = 0; i < INVENTORY_SIZE; i++)
 	{
 		int itemID = pBody->ItemSlots[i];
+
 		pUser->SetInventory(i, itemID);
 		p.itemIDs[i] = itemID;
 	}
 
 	SendPacketFunc(clientIndex_, sizeof(p), (char*)&p);
-	printf("[Redis] Inventory Loaded for User %d\n", clientIndex_);
+	printf("[Inventory] Loaded for User Index: %d\n", clientIndex_);
 }
 
 void PacketManager::ProcessTradeRequest(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
@@ -578,28 +605,39 @@ void PacketManager::ProcessShopUpdateDBResult(UINT32 clientIndex_, UINT16 packet
 {
 	auto pBody = (RedisShopRes*)pPacket_;
 
+	mCurrentShopItemID = pBody->ItemID;
+	mNextShopUpdateTime = pBody->NextUpdateTime;
+
 	SHOP_INFO_PACKET p;
 	p.currentItemID = pBody->ItemID;
 	p.nextUpdateTime = pBody->NextUpdateTime;
 
-	//모든 유저에게 전송
 	mRoomManager->SendToAllUser(p.PacketLength, (char*)&p, -1, false);
 	printf("[Redis] Shop Update Broadcast. Item: %d\n", p.currentItemID);
 }
 
 void PacketManager::ProcessShopBuyRequest(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
 {
-	auto pBody = (RedisShopBuyReq*)pPacket_;
+	auto pReqPacket = reinterpret_cast<SHOP_BUY_REQUEST_PACKET*>(pPacket_);
 
-	SHOP_BUY_REQUEST_PACKET p;
-	p.userUUID = clientIndex_;
-	p.itemID = pBody->itemID;
+	auto pUser = mUserManager->GetUserByConnIdx(clientIndex_);
+	if (pUser == nullptr) return;
+
+	RedisShopBuyReq dbReq;
+	memset(&dbReq, 0, sizeof(RedisShopBuyReq));
+	strncpy_s(dbReq.UserID, MAX_USER_ID_LEN + 1, pUser->GetUserId().c_str(), _TRUNCATE);
+	dbReq.itemID = pReqPacket->itemID;
 
 	RedisTask task;
 	task.TaskID = RedisTaskID::REQUEST_SHOP_BUY;
+	task.UserIndex = clientIndex_;
 	task.DataSize = sizeof(RedisShopBuyReq);
 	task.pData = new char[task.DataSize];
+	memcpy(task.pData, &dbReq, task.DataSize);
+
 	mRedisMgr->PushTask(task);
+
+	printf("[Shop] Buy Request Pushed. User: %s(%d), Item: %d\n", dbReq.UserID, clientIndex_, dbReq.itemID);
 }
 
 void PacketManager::ProcessShopBuyDBResult(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)

@@ -584,6 +584,21 @@ void PacketManager::ProcessShopUpdateDBResult(UINT32 clientIndex_, UINT16 packet
 	printf("[Redis] Shop Update Broadcast. Item: %d\n", p.currentItemID);
 }
 
+void PacketManager::ProcessShopBuyRequest(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
+{
+	auto pBody = (RedisShopBuyReq*)pPacket_;
+
+	SHOP_BUY_REQUEST_PACKET p;
+	p.userUUID = clientIndex_;
+	p.itemID = pBody->itemID;
+
+	RedisTask task;
+	task.TaskID = RedisTaskID::REQUEST_SHOP_BUY;
+	task.DataSize = sizeof(RedisShopBuyReq);
+	task.pData = new char[task.DataSize];
+	mRedisMgr->PushTask(task);
+}
+
 Vector3 stringToVector3(const std::string& s) {
 	std::stringstream ss(s);
 	char discardChar; // To consume parentheses and commas

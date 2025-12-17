@@ -24,6 +24,9 @@ enum class RedisTaskID : UINT16
 	REQUEST_SHOP_UPDATE = 12001,
 	RESPONSE_SHOP_UPDATE = 12002,
 
+	REQUEST_SHOP_BUY = 12003,
+	RESPONSE_SHOP_BUY = 12004,
+
 	//거래
 	REQUEST_TRADE_EXCHANGE = 13001,
 	RESPONSE_TRADE_EXCHANGE = 13002,
@@ -136,6 +139,17 @@ struct RedisShopRes
 {
 	int ItemID;
 	INT64 NextUpdateTime;
+};
+
+struct RedisShopBuyReq
+{
+	char UserID[MAX_USER_ID_LEN + 1];
+	int itemID;
+};
+
+struct RedisShopBuyRes
+{
+	bool isSuccess;
 };
 
 #pragma pack(pop) //위에 설정된 패킹설정이 사라짐

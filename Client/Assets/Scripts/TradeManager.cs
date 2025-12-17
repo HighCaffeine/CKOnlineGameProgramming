@@ -122,7 +122,7 @@ public class TradeManager : MonoBehaviour
         tradeWindowPanel.SetActive(true);
         tradeReqPanel.SetActive(false);
 
-        if (myName) myName.text = Client.myName;
+        if (myName) myName.text = LocalPlayerInfo.Name;
         if (partnerName) partnerName.text = currentPartnerName;
 
         // 상태 초기화

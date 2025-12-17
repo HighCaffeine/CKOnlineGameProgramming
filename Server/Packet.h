@@ -85,6 +85,7 @@ enum class  PACKET_ID : UINT16
 	//인벤 / 상점용
 	INVENTORY_INFO = 301,       // 접속갱신 시 인벤토리 정보 전송
 	SHOP_INFO = 302,            // 상점 정보 - 현재 판매 아이템, 다음 갱신 시간
+	SHOP_BUY_REQUEST = 303,		//아이템 구매 요청
 
 	//거래용
 	TRADE_REQUEST = 310,        // A -> Server: 교환 요청
@@ -276,13 +277,19 @@ struct SHOP_INFO_PACKET : public PACKET_HEADER
 	INT64 nextUpdateTime;	//다음 갱신 시간
 	SHOP_INFO_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::SHOP_INFO) {}
 };
+struct SHOP_BUY_REQUEST_PACKET : public PACKET_HEADER
+{
+	INT64 userUUID;
+	INT32 itemID;
+	SHOP_BUY_REQUEST_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::SHOP_BUY_REQUEST) {}
+};
 #pragma endregion
 #pragma region Inventory Packet
 //INVENTORY_INFO
 struct INVENTORY_INFO_PACKET : public PACKET_HEADER
 {
 	INT64 userUUID;
-	int itemIDs[INVENTORY_SIZE] = { 0, };
+	INT32 itemIDs[INVENTORY_SIZE] = { 0, };
 	INVENTORY_INFO_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::INVENTORY_INFO) {}
 };
 #pragma endregion

@@ -3,6 +3,16 @@ using System.Collections.Generic;
 
 public class ItemDataBase : MonoBehaviour
 {
+
+    public enum ItemID
+    {
+        COIN = 101,
+        SWORD = 102,
+        SHIELD = 103,
+        POTION = 104,
+        CLOTHES = 105
+    };
+
     public static ItemDataBase Instance;
 
     [System.Serializable]

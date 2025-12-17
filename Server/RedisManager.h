@@ -451,6 +451,80 @@ private:
 						PushResponse(resTask);
 					}
 				}
+				else if (task.TaskID == RedisTaskID::REQUEST_SHOP_BUY)
+				{
+					auto pRequest = (RedisShopBuyReq*)task.pData;
+					RedisShopBuyRes resData;
+					resData.isSuccess = false;
+
+					// 유저 인벤토리 조회
+					std::string invenKey = "u:" + std::string(pRequest->UserID) + ":inven";
+					std::map<std::string, std::string> inven;
+
+					mConn.hgetall(invenKey, inven);
+
+					// 빈 슬롯 찾기
+					int emptySlotIndex = -1;
+					int tempInven[INVENTORY_SIZE] = { 0, };
+
+					for (auto const& [key, value] : inven)
+					{
+						int idx = std::stoi(key);
+						if (idx >= 0 && idx < INVENTORY_SIZE)
+						{
+							tempInven[idx] = std::stoi(value);
+						}
+					}
+
+					for (int i = 0; i < INVENTORY_SIZE; i++)
+					{
+						if (tempInven[i] == 0)
+						{
+							emptySlotIndex = i;
+							break;
+						}
+					}
+
+					if (emptySlotIndex != -1)
+					{
+						uint32_t ret;
+						mConn.hset(invenKey, std::to_string(emptySlotIndex), std::to_string(pRequest->itemID), ret);
+
+						resData.isSuccess = true;
+						printf("[Shop] User(%s) Bought Item(%d) at Slot(%d)\n", pRequest->UserID, pRequest->itemID, emptySlotIndex);
+					}
+					else
+					{
+						// 인벤토리 꽉 참
+						resData.isSuccess = false;
+						printf("[Shop] User(%s) Buy Failed (Inventory Full)\n", pRequest->UserID);
+					}
+
+					RedisTask resTask;
+					resTask.TaskID = RedisTaskID::RESPONSE_SHOP_BUY;
+					resTask.UserIndex = task.UserIndex; // 요청한 유저에게만 전송
+					resTask.DataSize = sizeof(RedisShopBuyRes);
+					resTask.pData = new char[resTask.DataSize];
+					memcpy(resTask.pData, &resData, resTask.DataSize);
+					PushResponse(resTask);
+
+					// 성공 시 인벤토리 자동 갱신 요청
+					if (resData.isSuccess)
+					{
+						RedisInvenReq invenReq;
+						invenReq.UserIndex = task.UserIndex;
+						strncpy_s(invenReq.UserID, MAX_USER_ID_LEN + 1, pRequest->UserID, _TRUNCATE);
+
+						RedisTask invenTask;
+						invenTask.TaskID = RedisTaskID::REQUEST_LOAD_INVENTORY;
+						invenTask.UserIndex = task.UserIndex;
+						invenTask.DataSize = sizeof(RedisInvenReq);
+						invenTask.pData = new char[invenTask.DataSize];
+						memcpy(invenTask.pData, &invenReq, invenTask.DataSize);
+
+						PushTask(invenTask);
+					}
+				}
 
 				task.Release();
 			}

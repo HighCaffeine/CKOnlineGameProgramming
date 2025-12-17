@@ -5,9 +5,11 @@ public class ShopManager : MonoBehaviour
 {
     public static ShopManager Instance;
     [Header("Shop UI")]
-    public TMPro.TextMeshProUGUI shopItemNameText;  // 현재 판매 아이템 이름/ID
     public TMPro.TextMeshProUGUI shopTimerText;     // 남은 시간 (00:00:00)
+    public UnityEngine.UI.Image targetImage;    //판매 아이템
     private long targetShopTime;   // 서버에서 받은 갱신 시간 (Unix Timestamp)
+
+    private int currentItemID;
 
     private void Awake()
     {
@@ -41,6 +43,21 @@ public class ShopManager : MonoBehaviour
     public void SetTargetShopTime(long targetShopTime, int itemID)
     {
         this.targetShopTime = targetShopTime;
-        if (shopItemNameText) shopItemNameText.text = "Item ID: " + itemID;
+        currentItemID = itemID;
+
+        UpdateItem();
+    }
+
+    public void UpdateItem()
+    {
+        targetImage.sprite = ItemDataBase.Instance.GetItemSprite(currentItemID);
+    }
+
+    public void BuyItem()
+    {
+        P_ShopBuyRequest pkt = new P_ShopBuyRequest();
+        pkt.itemID = currentItemID;
+        pkt.userUUID = LocalPlayerInfo.ID;
+        Client.TCP.SendPacket(E_PACKET.SHOP_BUY_REQUEST, pkt);
     }
 }

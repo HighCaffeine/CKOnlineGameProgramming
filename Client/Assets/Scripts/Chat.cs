@@ -15,6 +15,8 @@ public class Chat : MonoBehaviour, IPacketReceiver
     private IEnumerator showMessagesCorutine;
     private GUIStyle chatMessageStyle;
 
+    private Dictionary<string, long> roomUserList = new Dictionary<string, long>();
+
     void Start()
     {
         Client.TCP.AddPacketReceiver(this);
@@ -28,26 +30,61 @@ public class Chat : MonoBehaviour, IPacketReceiver
     void OnGUI()
     {
         bool enter = Event.current.type == EventType.KeyDown && (Event.current.character == '\n');
-        bShowInput ^= enter;
-        GUI.backgroundColor = Color.clear;
-        GUI.Window(1337, new Rect(10, Screen.height - CHAT_WINDOW_HEIGHT, 400, CHAT_WINDOW_HEIGHT), ChatWindow, string.Empty);
+
         if (enter)
         {
-            ScrollToBottom();
-            if (!string.IsNullOrWhiteSpace(currentMessage) && !string.IsNullOrWhiteSpace(currentMessage))
+            if (bShowInput && !string.IsNullOrWhiteSpace(currentMessage))
             {
-                P_RoomChatRequest roomChatRequest = default;
-                roomChatRequest.message = currentMessage;
+                SendMessageOrCommand();
                 currentMessage = string.Empty;
-                Client.TCP.SendPacket2(E_PACKET.ROOM_CHAT_REQUEST, roomChatRequest);
             }
+
+            bShowInput = !bShowInput;
+            ScrollToBottom();
         }
+
+        GUI.backgroundColor = Color.clear;
+        GUI.Window(1337, new Rect(10, Screen.height - CHAT_WINDOW_HEIGHT, 400, CHAT_WINDOW_HEIGHT), ChatWindow, string.Empty);
+    }
+
+    void SendMessageOrCommand()
+    {
+        string msg = currentMessage.Trim();
+
+        if (msg.StartsWith("/trade "))
+        {
+            string targetName = msg.Substring(7).Trim();
+
+            if (roomUserList.ContainsKey(targetName))
+            {
+                long targetUUID = roomUserList[targetName];
+
+                if (targetName == LocalPlayerInfo.Name)
+                {
+                    AddMessage("<color=red>[System] cant trade with yourself.</color>");
+                }
+                else
+                {
+                    TradeManager.Instance.SendTradeRequest(targetUUID);
+                    AddMessage($"<color=yellow>[System] Trade request to {targetName}</color>");
+                }
+            }
+            else
+            {
+                AddMessage($"<color=red>[System] {targetName} user not found </color>");
+            }
+
+            return;
+        }
+
+        // 명령어가 아닐 경우 일반 채팅으로 전송
+        P_RoomChatRequest roomChatRequest = default;
+        roomChatRequest.message = currentMessage;
+        Client.TCP.SendPacket2(E_PACKET.ROOM_CHAT_REQUEST, roomChatRequest);
     }
 
     void ChatWindow(int id)
     {
-        // the scrollbar does not function properly
-        // I will fix it in the future
         chatScroll = GUILayout.BeginScrollView(chatScroll);
         if (bShowMessages || bShowInput)
         {
@@ -62,6 +99,7 @@ public class Chat : MonoBehaviour, IPacketReceiver
             }
         }
         GUILayout.EndScrollView();
+
         if (bShowInput)
         {
             GUI.SetNextControlName("Message Input");
@@ -102,12 +140,6 @@ public class Chat : MonoBehaviour, IPacketReceiver
                 P_RoomChatNotify roomChatNotify = UnsafeCode.ByteArrayToStructure<P_RoomChatNotify>(packet.data);
                 string color = LocalPlayerInfo.Name == roomChatNotify.userID ? "lime" : "red";
                 AddMessage($"<color={color}>[{roomChatNotify.userID}] {roomChatNotify.message}</color>");
-
-                // temp
-                //if (PathVisualizer.Instance != null)
-                //{
-                //    PathVisualizer.Instance.TestReceive();
-                //}
                 break;
 
             case E_PACKET.ROOM_ENTER_RESPONSE:
@@ -118,16 +150,22 @@ public class Chat : MonoBehaviour, IPacketReceiver
             case E_PACKET.ROOM_NEW_USER_NTF:
                 P_RoomNewUserNotify roomNewUserNotify = UnsafeCode.ByteArrayToStructure<P_RoomNewUserNotify>(packet.data);
                 AddMessage($"<color=blue>[Game] {roomNewUserNotify.userName} has joined</color>");
+
+                if (!roomUserList.ContainsKey(roomNewUserNotify.userName)) roomUserList.Add(roomNewUserNotify.userName, roomNewUserNotify.userUUID);
                 break;
 
             case E_PACKET.ROOM_USER_INFO_NTF:
                 P_RoomUserInfoNotify roomUserListNotify = UnsafeCode.ByteArrayToStructure<P_RoomUserInfoNotify>(packet.data);
                 AddMessage($"<color=blue>[Game] {roomUserListNotify.userName} exists </color>");
+
+                if (!roomUserList.ContainsKey(roomUserListNotify.userName)) roomUserList.Add(roomUserListNotify.userName, roomUserListNotify.userUUID);
                 break;
 
             case E_PACKET.ROOM_LEAVE_USER_NTF:
                 P_RoomLeaveUserNotify roomLeaveUserNotify = UnsafeCode.ByteArrayToStructure<P_RoomLeaveUserNotify>(packet.data);
                 AddMessage($"<color=blue>[Game] {roomLeaveUserNotify.userName} has left</color>");
+
+                if (roomUserList.ContainsKey(roomLeaveUserNotify.userName)) roomUserList.Remove(roomLeaveUserNotify.userName);
                 break;
 
             default:

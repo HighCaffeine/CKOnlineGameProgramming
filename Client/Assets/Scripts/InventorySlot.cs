@@ -1,31 +1,48 @@
 using UnityEngine;
+using UnityEngine.EventSystems; // 클릭 이벤트용 네임스페이스
 using UnityEngine.UI;
 
 public class InventorySlot : MonoBehaviour
 {
-    public Image iconImage; // 아이콘을 표시할 UI Image
-    public int slotIndex;   // 0~4번 인덱스
+    public Image iconImage;
+    public int slotIndex;
 
-    private int currentItemID = 0;
+    public Button slotButton;
+
+    public int currentItemID { get; private set; }
+    private Inventory parentInventory;
+
+    private void Awake()
+    {
+        parentInventory = GetComponentInParent<Inventory>();
+    }
 
     public void UpdateSlot(int itemID)
     {
         currentItemID = itemID;
 
-        if (itemID == 0) // 0번은 빈 아이템
+        if (itemID == 0)
         {
             iconImage.sprite = null;
-            iconImage.enabled = false; // 이미지 끄기
+            iconImage.enabled = false;
         }
         else
         {
-            Sprite itemSprite = ItemDataBase.Instance.GetItemSprite(itemID);
+            iconImage.sprite = ItemDataBase.Instance.GetItemSprite(itemID);
+            iconImage.enabled = true;
+        }
+    }
 
-            if (itemSprite != null)
-            {
-                iconImage.sprite = itemSprite;
-                iconImage.enabled = true; // 이미지 켜기
-            }
+    public void SetSlotButtonInteractable(bool isAllow)
+    {
+        if (slotButton) slotButton.interactable = isAllow;
+    }
+
+    public void OnClick()
+    {
+        if (parentInventory != null)
+        {
+            parentInventory.OnSlotClick(slotIndex, currentItemID);
         }
     }
 }

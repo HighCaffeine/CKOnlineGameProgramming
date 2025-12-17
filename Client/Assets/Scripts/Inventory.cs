@@ -3,10 +3,17 @@ using System.Collections.Generic;
 
 public class Inventory : MonoBehaviour
 {
+    public enum InventoryType
+    {
+        Main,           // 내 메인 인벤토리
+        Trade_My,       // 거래창 : 내 쪽
+        Trade_Partner   // 거래창 : 상대방 쪽 (잠김)
+    }
+
     public static Inventory Instance;
 
     [Tooltip("True : Main Inventory, False : Trade/Other")]
-    public bool isInventory;
+    public InventoryType inventoryType;
 
     public InventorySlot[] slots;
 
@@ -14,9 +21,46 @@ public class Inventory : MonoBehaviour
 
     public void Awake()
     {
-        if (isInventory)
+        if (inventoryType == InventoryType.Main)
         {
             Instance = this;
+        }
+    }
+
+    public void OnSlotClick(int slotIndex, int itemID)
+    {
+        if (inventoryType == InventoryType.Trade_Partner)
+        {
+            return;
+        }
+
+        if (inventoryType == InventoryType.Trade_My)
+        {
+            if (itemID != 0)
+            {
+                TradeManager.Instance.OnRegisterItem(slotIndex, 0);
+                Debug.Log($"[Trade] {slotIndex}item cancel");
+            }
+        }
+
+        if (inventoryType == InventoryType.Main)
+        {
+            if (TradeManager.Instance.tradeWindowPanel.activeSelf)
+            {
+                if (itemID == 0) return;
+
+                int emptySlot = TradeManager.Instance.GetEmptyMyTradeSlot();
+
+                if (emptySlot != -1)
+                {
+                    TradeManager.Instance.OnRegisterItem(emptySlot, itemID);
+                    Debug.Log($"[Trade] {itemID} move to trade {emptySlot}slot");
+                }
+                else
+                {
+                    Debug.Log("[Trade] trade inventory is full");
+                }
+            }
         }
     }
 
@@ -33,7 +77,7 @@ public class Inventory : MonoBehaviour
             slots[i].UpdateSlot(itemID);
         }
 
-        Debug.Log($"[Inventory] UI Updated. (IsMain: {isInventory})");
+        Debug.Log($"[Inventory] UI Updated)");
     }
 
     public void SetInventoryByIndex(int index, int itemID)

@@ -57,6 +57,7 @@ public class TradeManager : MonoBehaviour
     }
     public void OnRegisterItem(int slotIndex, int itemID)
     {
+        if (!tradeReqPanel.activeSelf) return;
         if (isMyLocked) return; // 잠금 상태면 못 바꿈
 
         P_TradeItemUpdate pkt = new P_TradeItemUpdate();
@@ -70,6 +71,21 @@ public class TradeManager : MonoBehaviour
             myTradeInventory.SetInventoryByIndex(slotIndex, itemID);
         }
     }
+    public int GetEmptyMyTradeSlot()
+    {
+        if (myTradeInventory != null && myTradeInventory.slots != null)
+        {
+            for (int i = 0; i < myTradeInventory.slots.Length; i++)
+            {
+                if (myTradeInventory.slots[i].currentItemID != 0)
+                {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
     public void OnClickLock()
     {
         isMyLocked = true;

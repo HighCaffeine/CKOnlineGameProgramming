@@ -6,10 +6,8 @@ public class ShopManager : MonoBehaviour
     public static ShopManager Instance;
     [Header("Shop UI")]
     public TMPro.TextMeshProUGUI shopTimerText;     // 남은 시간 (00:00:00)
-    public UnityEngine.UI.Image targetImage;    //판매 아이템
+    public InventorySlot itemSlot;
     private long targetShopTime;   // 서버에서 받은 갱신 시간 (Unix Timestamp)
-
-    public Transform itemBuyDisablePanel;   //구매 완료용 패널
 
     private int currentItemID;
 
@@ -52,19 +50,30 @@ public class ShopManager : MonoBehaviour
 
     public void UpdateItem()
     {
-        Sprite s = ItemDataBase.Instance.GetItemSprite(currentItemID);
-        targetImage.sprite = s;
-
-        if (s != null) itemBuyDisablePanel.gameObject.SetActive(false);
+        itemSlot.UpdateSlot(currentItemID);
     }
 
     public void SetItemBuyState(bool isSuccess)
     {
-        if (isSuccess) itemBuyDisablePanel.gameObject.SetActive(true);
+        isItemBuying = false;
+        if (itemSlot) itemSlot.SetSlotButtonInteractable(true);
+
+        if (isSuccess)
+        {
+            Debug.Log("<color=green>[Shop] 구매 성공!</color>");
+        }
+        else
+        {
+            Debug.Log("<color=red>[Shop] 구매 실패 (인벤토리 부족 등)</color>");
+        }
     }
 
+    private bool isItemBuying = false;
     public void BuyItem()
     {
+        if (isItemBuying) return;
+        isItemBuying = true;
+
         P_ShopBuyRequest pkt = new P_ShopBuyRequest();
         pkt.itemID = currentItemID;
         pkt.userUUID = LocalPlayerInfo.ID;

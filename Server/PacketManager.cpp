@@ -247,7 +247,6 @@ void PacketManager::ProcessRecvPacket(const UINT32 clientIndex_, const UINT16 pa
 	{
 		printf("[Error] Unregistered Packet ID: %d\n", packetId_);
 	}
-
 }
 
 void PacketManager::ProcessUserConnect(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
@@ -428,7 +427,6 @@ void PacketManager::ProcessLeaveRoom(UINT32 clientIndex_, UINT16 packetSize_, ch
 	auto reqUser = mUserManager->GetUserByConnIdx(clientIndex_);
 	auto roomNum = reqUser->GetCurrentRoom();
 				
-	//TODO Room안의 UserList객체의 값 확인하기
 	roomLeaveResPacket.Result = mRoomManager->LeaveUser(roomNum, reqUser);
 	SendPacketFunc(clientIndex_, sizeof(ROOM_LEAVE_RESPONSE_PACKET), (char*)&roomLeaveResPacket);
 }
@@ -582,8 +580,6 @@ void PacketManager::ProcessTradeRequest(UINT32 clientIndex_, UINT16 packetSize_,
 	TRADE_REQUEST_NTF_PACKET p;
 	p.reqUUID = clientIndex_;
 	strncpy_s(p.reqName, pUser->GetUserId().c_str(), MAX_USER_ID_LEN);
-
-	printf("[Trade Debug] %d\n", p.reqUUID);
 
 	SendPacketFunc(pReq->targetUUID, sizeof(p), (char*)&p);
 	SendPacketFunc(clientIndex_, packetSize_, pPacket_);
@@ -739,13 +735,11 @@ void PacketManager::ProcessTradeConfirm(UINT32 clientIndex_, UINT16 packetSize_,
 	SendPacketFunc(clientIndex_, sizeof(resP), (char*)&resP);
 
 
-	//두번째 confirm 패킷이 왔을 떄 바로 거래 처리
 	if (curTS.isConfirmA && curTS.isConfirmB) 
 	{
 		RedisTradeReq req;
 		memset(&req, 0, sizeof(RedisTradeReq));
 
-		// 중요: Slot 정보를 모두 -1로 초기화 (0번 슬롯 오작동 방지)
 		std::fill(req.ItemsASlot, req.ItemsASlot + INVENTORY_SIZE, -1);
 		std::fill(req.ItemsBSlot, req.ItemsBSlot + INVENTORY_SIZE, -1);
 

@@ -574,6 +574,7 @@ void PacketManager::ProcessInventoryDBResult(UINT32 clientIndex_, UINT16 packetS
 	printf("[Inventory] Loaded for User Index: %d\n", clientIndex_);
 }
 
+// 거래 요청 처리 메서드
 void PacketManager::ProcessTradeRequest(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
 {
 	auto pReq = (TRADE_REQUEST_PACKET*)pPacket_;
@@ -583,16 +584,18 @@ void PacketManager::ProcessTradeRequest(UINT32 clientIndex_, UINT16 packetSize_,
 	p.reqUUID = clientIndex_;
 	strncpy_s(p.reqName, pUser->GetUserId().c_str(), MAX_USER_ID_LEN);
 
+	// 상대방에게 거래 요청을 보냄
 	SendPacketFunc(pReq->targetUUID, sizeof(p), (char*)&p);
 }
 
+// 거래 요청 수신자의 패킷
 void PacketManager::ProcessTradeResponse(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
 {
 	auto pData = (TRADE_RESPONSE_PACKET*)pPacket_;
 	TRADE_RESPONSE_PACKET p;
 	p.isAccept = pData->isAccept;
 
-
+	// 수락시 처리
 	if (p.isAccept)
 	{
 		TradeSession ts;
@@ -607,6 +610,7 @@ void PacketManager::ProcessTradeResponse(UINT32 clientIndex_, UINT16 packetSize_
 	SendPacketFunc(pData->tradeUUID, sizeof(p), (char*)&p); // 상대방에게 보냄
 }
 
+// 거래창에 올려놓을 시 발생하는 메서드
 void PacketManager::ProcessTradeItemUpdate(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
 {
 	auto pData = (TRADE_ITEM_UPDATE_PACKET*)pPacket_;
@@ -614,13 +618,15 @@ void PacketManager::ProcessTradeItemUpdate(UINT32 clientIndex_, UINT16 packetSiz
 	if (curTS.userA == clientIndex_)
 	{
 		other = curTS.userB;
-		curTS.itemsA[pData->index] = pData->itemID;
+		curTS.itemsA[pData->index] = pData->itemID;// 패킷매니저에 업데이트
 	}
 	else if (curTS.userB == clientIndex_)
 	{
 		other = curTS.userA;
 		curTS.itemsB[pData->index] = pData->itemID;
 	}
+
+	// 상대방에게 보낼 패킷과 자신에게 보낼 패킷을 나눔
 	TRADE_ITEM_UPDATE_PACKET p;
 	p.index = pData->index;
 	p.itemID = pData->itemID;
@@ -649,18 +655,12 @@ void PacketManager::ProcessTradeLock(UINT32 clientIndex_, UINT16 packetSize_, ch
 	if (clientIndex_ == curTS.userA)
 	{
 		other = curTS.userB;
-		if (pData->isLock)
-		{
-			curTS.isLockB = true;
-		}
+		curTS.isLockA = p.isLock;
 	}
 	else if (clientIndex_ == curTS.userB)
 	{
 		other = curTS.userA;
-		if (pData->isLock)
-		{
-			curTS.isLockA = true;
-		}
+		curTS.isLockB = p.isLock;
 	}
 
 	SendPacketFunc(clientIndex_, sizeof(selfP), (char*)&selfP); // 자신에게 Lock을 보냄

@@ -598,8 +598,8 @@ void PacketManager::ProcessTradeResponse(UINT32 clientIndex_, UINT16 packetSize_
 		TradeSession ts;
 		ts.userA = clientIndex_;
 		ts.userB = pData->tradeUUID;
-		ts.itemsA.resize(INVENTORY_SIZE);
-		ts.itemsB.resize(INVENTORY_SIZE);
+		ts.itemsA.resize(INVENTORY_SIZE, EMPTYITEM);
+		ts.itemsB.resize(INVENTORY_SIZE, EMPTYITEM);
 		curTS = ts;
 	}
 
@@ -710,8 +710,9 @@ void PacketManager::ProcessTradeDBResult(UINT32 clientIndex_, UINT16 packetSize_
 	if (curTS.isConfirmA && curTS.isConfirmB) // 둘다 confirm이 됐을 경우
 	{
 		RedisTradeReq req;
+		// 유저 찾는 작업
 		req.UserA = curTS.userA;
-		std::string tempA = mUserManager->GetUserByConnIdx(curTS.userA)->GetUserId();
+		std::string tempA = mUserManager->GetUserByConnIdx(curTS.userA)->GetUserId(); 
 		strcpy_s(req.UserAID, tempA.length(), tempA.c_str());
 		req.UserB = curTS.userB;
 		std::string tempB = mUserManager->GetUserByConnIdx(curTS.userB)->GetUserId();
@@ -720,6 +721,16 @@ void PacketManager::ProcessTradeDBResult(UINT32 clientIndex_, UINT16 packetSize_
 		{
 			req.ItemsBID[i] = curTS.itemsB[i];
 			req.ItemsAID[i] = curTS.itemsA[i];
+			req.ItemsBSlot[i] = -1;
+			req.ItemsASlot[i] = -1;
+			if (req.ItemsBID[i] != EMPTYITEM)
+			{
+				req.ItemsBSlot[i] = i;
+			}
+			if (req.ItemsAID != EMPTYITEM)
+			{
+				req.ItemsASlot[i] = i;
+			}
 		}
 
 		RedisTask task;

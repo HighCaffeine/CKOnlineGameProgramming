@@ -727,7 +727,7 @@ void PacketManager::ProcessTradeDBResult(UINT32 clientIndex_, UINT16 packetSize_
 			{
 				req.ItemsBSlot[i] = i;
 			}
-			if (req.ItemsAID != EMPTYITEM)
+			if (req.ItemsAID[i] != EMPTYITEM)
 			{
 				req.ItemsASlot[i] = i;
 			}

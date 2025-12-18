@@ -103,6 +103,8 @@ enum class  PACKET_ID : UINT16
 
 	TRADE_CONFIRM = 318,        // A,B -> Server: 최종 교환 버튼
 	TRADE_RESULT = 319,         // Server -> A, B: 거래 성공/실패 결과
+
+	TRADE_CONFIRM_NTF = 320,
 };
 
 #pragma pack(push,1)
@@ -375,6 +377,13 @@ struct TRADE_CONFIRM_PACKET : public PACKET_HEADER
 	bool isConfirm;
 	TRADE_CONFIRM_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::TRADE_CONFIRM) {}
 };
+
+struct TRADE_CONFIRM_NTF_PACKET : public PACKET_HEADER
+{
+	bool isConfirm;
+	TRADE_CONFIRM_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::TRADE_CONFIRM_NTF) {}
+};
+
 
 //TRADE_RESULT, 레디스 트랜잭션 결과
 struct TRADE_RESULT_PACKET : public PACKET_HEADER

@@ -108,5 +108,7 @@ private:
 	std::deque<UINT32> mInComingPacketUserIndex;
 
 	std::deque<PacketInfo> mSystemPacketQueue;
+
+	TradeSession curTS;
 };
 

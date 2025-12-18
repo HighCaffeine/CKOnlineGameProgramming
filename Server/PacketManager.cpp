@@ -588,24 +588,147 @@ void PacketManager::ProcessTradeRequest(UINT32 clientIndex_, UINT16 packetSize_,
 
 void PacketManager::ProcessTradeResponse(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
 {
+	auto pData = (TRADE_RESPONSE_PACKET*)pPacket_;
+	TRADE_RESPONSE_PACKET p;
+	p.isAccept = pData->isAccept;
 
+
+	if (p.isAccept)
+	{
+		TradeSession ts;
+		ts.userA = clientIndex_;
+		ts.userB = pData->tradeUUID;
+		ts.itemsA.resize(INVENTORY_SIZE);
+		ts.itemsB.resize(INVENTORY_SIZE);
+		curTS = ts;
+	}
+
+	SendPacketFunc(clientIndex_, sizeof(p), (char*)&p); // 자신에게 보냄
+	SendPacketFunc(pData->tradeUUID, sizeof(p), (char*)&p); // 상대방에게 보냄
 }
 
 void PacketManager::ProcessTradeItemUpdate(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
 {
+	auto pData = (TRADE_ITEM_UPDATE_PACKET*)pPacket_;
+	int other;
+	if (curTS.userA == clientIndex_)
+	{
+		other = curTS.userB;
+		curTS.itemsA[pData->index] = pData->itemID;
+	}
+	else if (curTS.userB == clientIndex_)
+	{
+		other = curTS.userA;
+		curTS.itemsB[pData->index] = pData->itemID;
+	}
+	TRADE_ITEM_UPDATE_PACKET p;
+	p.index = pData->index;
+	p.itemID = pData->itemID;
+	TRADE_ITEM_NTF_PACKET p2;
+	p2.index = pData->index;
+	p2.itemID = pData->itemID;
+
+	SendPacketFunc(clientIndex_, sizeof(p), (char*)&p); // 자신에게 보냄
+	SendPacketFunc(other, sizeof(p2), (char*)&p2); // 상대방에게 보냄
+
+
 }
 
 void PacketManager::ProcessTradeLock(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
 {
+	auto pData = (TRADE_LOCK_PACKET*)pPacket_;
+
+
+	TRADE_LOCK_NTF_PACKET p;
+	p.isLock = pData->isLock;
+
+	TRADE_LOCK_PACKET selfP;
+	selfP.isLock = pData->isLock;
+
+	int other;
+	if (clientIndex_ == curTS.userA)
+	{
+		other = curTS.userB;
+		if (pData->isLock)
+		{
+			curTS.isLockB = true;
+		}
+	}
+	else if (clientIndex_ == curTS.userB)
+	{
+		other = curTS.userA;
+		if (pData->isLock)
+		{
+			curTS.isLockA = true;
+		}
+	}
+
+	SendPacketFunc(clientIndex_, sizeof(selfP), (char*)&selfP); // 자신에게 Lock을 보냄
+	SendPacketFunc(other, sizeof(p), (char*)&p); // 상대방에게 자신의 Lock을 보냄
 }
 
 void PacketManager::ProcessTradeConfirm(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
 {
+	auto pData = (TRADE_CONFIRM_PACKET*)pPacket_;
+	auto pUser = mUserManager->GetUserByConnIdx(clientIndex_);
+	TRADE_CONFIRM_PACKET p;
+	p.isConfirm = pData->isConfirm;
+
+	TRADE_CONFIRM_NTF_PACKET resP;
+	resP.isConfirm = pData->isConfirm;
+
+	int other;
+	if (clientIndex_ == curTS.userA)
+	{
+		other = curTS.userB;
+		if (pData->isConfirm)
+		{
+			curTS.isConfirmB = true;
+		}
+	}
+	else if(clientIndex_ == curTS.userB)
+	{
+		other = curTS.userA;
+		if (pData->isConfirm)
+		{
+			curTS.isConfirmA = true;
+		}
+	}
+	SendPacketFunc(other, sizeof(resP), (char*)&resP); // 상대방에게 자신이 확정된걸 보냄
+	SendPacketFunc(clientIndex_, sizeof(p), (char*)&p); // 자기자신이 확정된걸 보냄
+
+
+
+
+
+
+
 }
 
 void PacketManager::ProcessTradeDBResult(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)
 {
+	if (curTS.isConfirmA && curTS.isConfirmB) // 둘다 confirm이 됐을 경우
+	{
+		RedisTradeReq req;
+		req.UserA = curTS.userA;
+		std::string tempA = mUserManager->GetUserByConnIdx(curTS.userA)->GetUserId();
+		strcpy_s(req.UserAID, tempA.length(), tempA.c_str());
+		req.UserB = curTS.userB;
+		std::string tempB = mUserManager->GetUserByConnIdx(curTS.userB)->GetUserId();
+		strcpy_s(req.UserAID, tempA.length(), tempA.c_str());
+		for (int i = 0; i < INVENTORY_SIZE; i++)
+		{
+			req.ItemsBID[i] = curTS.itemsB[i];
+			req.ItemsAID[i] = curTS.itemsA[i];
+		}
 
+		RedisTask task;
+		task.TaskID = RedisTaskID::REQUEST_TRADE_EXCHANGE;
+		task.DataSize = sizeof(RedisTradeReq);
+		task.pData = (char*)&req;
+
+		mRedisMgr->PushTask(task);
+	}
 }
 
 void PacketManager::ProcessShopUpdateDBResult(UINT32 clientIndex_, UINT16 packetSize_, char* pPacket_)

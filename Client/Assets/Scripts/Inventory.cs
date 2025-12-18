@@ -53,7 +53,8 @@ public class Inventory : MonoBehaviour
 
                 if (emptySlot != -1)
                 {
-                    TradeManager.Instance.OnRegisterItem(emptySlot, itemID);
+                    TradeManager.Instance.OnRegisterItem(slotIndex, itemID);
+
                     Debug.Log($"[Trade] {itemID} move to trade {emptySlot}slot");
                 }
                 else
@@ -64,6 +65,21 @@ public class Inventory : MonoBehaviour
         }
     }
 
+    public int GetEmptySlot()
+    {
+        if (slots != null)
+        {
+            for (int i = 0; i < slots.Length; i++)
+            {
+                if (slots[i].currentItemID == 0)
+                {
+                    return i;
+                }
+            }
+        }
+
+        return -1;
+    }
     public void SetInventory(int[] items)
     {
         if (items == null) return;

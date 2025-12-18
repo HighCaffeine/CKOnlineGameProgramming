@@ -256,6 +256,9 @@ private:
 						int arrayA[INVENTORY_SIZE]; // 현재 가지고있는 인벤토리 데이터
 						int arrayB[INVENTORY_SIZE];
 
+						std::fill(arrayA, arrayA + INVENTORY_SIZE, EMPTYITEM);
+						std::fill(arrayB, arrayB + INVENTORY_SIZE, EMPTYITEM);
+
 						for (int i = 0; i < INVENTORY_SIZE; i++) // 교환창에있는 아이템들을 Queue에 담음
 						{
 							if (pRequest->ItemsAID[i] != EMPTYITEM) exchangeQueueA.push_back(pRequest->ItemsAID[i]); 
@@ -283,33 +286,34 @@ private:
 							}
 						}
 
-
-
-						// 각 플레이어의 인벤토리 array에서 해당되는 아이템을 지움
-						for (int i = 0; i < INVENTORY_SIZE; i++)
+						for (int i = 0; i < INVENTORY_SIZE; i++) 
 						{
-							if (pRequest->ItemsASlot[i] >= 0)
+							if (pRequest->ItemsASlot[i] >= 0 && pRequest->ItemsASlot[i] < INVENTORY_SIZE) 
 							{
-								arrayA[pRequest->ItemsASlot[i]] = EMPTYITEM;
+								if (pRequest->ItemsAID[i] != EMPTYITEM) 
+								{
+									arrayA[pRequest->ItemsASlot[i]] = EMPTYITEM;
+								}
 							}
-							if (pRequest->ItemsBSlot[i] >= 0)
+							if (pRequest->ItemsBSlot[i] >= 0 && pRequest->ItemsBSlot[i] < INVENTORY_SIZE) 
 							{
-								arrayB[pRequest->ItemsBSlot[i]] = EMPTYITEM;
+								if (pRequest->ItemsBID[i] != EMPTYITEM) 
+								{
+									arrayB[pRequest->ItemsBSlot[i]] = EMPTYITEM;
+								}
 							}
 						}
 
-
-						// 교환
-						for (int i = 0; i < INVENTORY_SIZE; i++)
+						for (int i = 0; i < INVENTORY_SIZE; i++) 
 						{
-							if (arrayA[i] == EMPTYITEM && !exchangeQueueB.empty())
+							if (arrayA[i] == EMPTYITEM && !exchangeQueueB.empty()) 
 							{
 								arrayA[i] = exchangeQueueB.front();
 								exchangeQueueB.pop_front();
 							}
-							if (arrayB[i] == EMPTYITEM && !exchangeQueueA.empty())
+							if (arrayB[i] == EMPTYITEM && !exchangeQueueA.empty()) 
 							{
-								arrayA[i] = exchangeQueueA.front();
+								arrayB[i] = exchangeQueueA.front();
 								exchangeQueueA.pop_front();
 							}
 						}

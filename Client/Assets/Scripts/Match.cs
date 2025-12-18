@@ -126,11 +126,24 @@ public unsafe class Match : MonoBehaviour, IPacketReceiver
                 var reqNtf = UnsafeCode.ByteArrayToStructure<P_TradeRequestNtf>(packet.data);
                 TradeManager.Instance.ShowRequestPopup(reqNtf.requesterName, reqNtf.requesterUUID);
 
-                Debug.Log($"[Trade] Trade Request From {reqNtf.requesterName}({reqNtf.requesterUUID})");
+                //Debug.Log($"[Trade] Trade Request From {reqNtf.requesterName}({reqNtf.requesterUUID})");
+                Chat.Instance.AddMessage($"<color=yellow>[System] Trade Request From {reqNtf.requesterName}({reqNtf.requesterUUID})");
+                break;
+            case E_PACKET.TRADE_RESPONSE:
+                var res = UnsafeCode.ByteArrayToStructure<P_TradeResponse>(packet.data);
+
+                if (res.isAccept == false)
+                {
+                    Chat.Instance.AddMessage($"<color=yellow>[System] Trade Rejected by {Players[res.requesterUUID]}");
+                    if (TradeManager.Instance.tradeReqPanel.activeSelf)
+                    {
+                        TradeManager.Instance.tradeReqPanel.SetActive(false);
+                    }
+                }
                 break;
             case E_PACKET.TRADE_START_NTF:
                 var startNtf = UnsafeCode.ByteArrayToStructure<P_TradeStartNtf>(packet.data);
-                TradeManager.Instance.OpenTradeWindow(startNtf.partnerUUID);
+                TradeManager.Instance.OpenTradeWindow(startNtf.partnerUUID, startNtf.userName);
 
                 Debug.Log($"[Trade] Trade Start With {startNtf.partnerUUID} User");
                 break;
@@ -147,25 +160,39 @@ public unsafe class Match : MonoBehaviour, IPacketReceiver
 
                 Debug.Log("[Trade] Partner Trade Lock State: " + lockNtf.isLocked);
                 break;
+            case E_PACKET.TRADE_CONFIRM_NTF:
+                var confirmNtf = UnsafeCode.ByteArrayToStructure<P_TradeConfirmNtf>(packet.data);
+
+                Debug.Log($"[Trade] Partner Confirmed State: {confirmNtf.isConfirmed}");
+
+                Debug.Log($"/{confirmNtf.confirmUserUUID}/, /{LocalPlayerInfo.ID}/");
+                if (confirmNtf.confirmUserUUID == LocalPlayerInfo.ID)
+                {
+                    TradeManager.Instance.SetMyConfirmState(confirmNtf.isConfirmed);
+                }
+                else
+                {
+                    TradeManager.Instance.SetPartnerConfirmState(confirmNtf.isConfirmed);
+                }
+
+                break;
             case E_PACKET.TRADE_RESULT:
-                var result = UnsafeCode.ByteArrayToStructure<P_TradeResult>(packet.data);
                 msg = string.Empty;
+                var result = UnsafeCode.ByteArrayToStructure<P_TradeResult>(packet.data);
 
                 if (result.isSuccess)
                 {
                     Debug.Log("[Trade] Trade Success");
                     msg = "[Trade] Trade Success";
+                    TradeManager.Instance.CloseTradeWindow(msg, true);
                 }
                 else
                 {
-                    //실패 사유는 없음
                     Debug.Log("[Trade] Trade Fail");
                     msg = "[Trade] Trade Fail";
+                    TradeManager.Instance.CloseTradeWindow(msg);
                 }
-
-                TradeManager.Instance.CloseTradeWindow(msg);
                 break;
-
             default:
                 break;
 

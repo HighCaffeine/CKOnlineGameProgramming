@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class MouseLook : MonoBehaviour
 {
@@ -13,14 +14,24 @@ public class MouseLook : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            Cursor.lockState = (Cursor.lockState == CursorLockMode.Locked) ? CursorLockMode.None : CursorLockMode.Locked;
+            Cursor.lockState = CursorLockMode.None;
         }
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (!EventSystem.current.IsPointerOverGameObject())
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+            }
+        }
+
         if (Cursor.lockState == CursorLockMode.Locked)
         {
             float mx = Input.GetAxis("Mouse X") * 500 * Time.deltaTime;
             float my = Input.GetAxis("Mouse Y") * 500 * Time.deltaTime;
             rotx -= my;
             rotx = Mathf.Clamp(rotx, -90, 90);
+
             transform.localRotation = Quaternion.Euler(rotx, 0, 0);
             transform.parent.Rotate(Vector3.up * mx);
         }

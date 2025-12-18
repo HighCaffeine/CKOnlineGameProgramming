@@ -5,6 +5,7 @@ using UnityEngine;
 
 public class Chat : MonoBehaviour, IPacketReceiver
 {
+    public static Chat Instance;
     private const float CHAT_WINDOW_HEIGHT = 250f;
 
     private bool bShowInput = false;
@@ -19,6 +20,7 @@ public class Chat : MonoBehaviour, IPacketReceiver
 
     void Start()
     {
+        Instance = this;
         Client.TCP.AddPacketReceiver(this);
     }
 
@@ -115,7 +117,7 @@ public class Chat : MonoBehaviour, IPacketReceiver
         bShowMessages = false;
     }
 
-    void AddMessage(string message)
+    public void AddMessage(string message)
     {
         messages.Add(message);
         if (messages.Count > 64)

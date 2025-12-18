@@ -53,6 +53,7 @@ public enum E_PACKET
 
     TRADE_CONFIRM = 318,        // A,B -> Server: 최종 교환 버튼
     TRADE_RESULT = 319,         // Server -> A, B: 거래 성공/실패 결과
+    TRADE_CONFIRM_NTF = 320,
 }
 
 [StructLayout(LayoutKind.Sequential, Size = 16)]
@@ -315,12 +316,16 @@ public struct P_TradeStartNtf
 {
     [MarshalAs(UnmanagedType.I8)]
     public long partnerUUID;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 33)]
+    public string userName;
 }
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
 public struct P_TradeItemUpdate
 {
     [MarshalAs(UnmanagedType.I4)]
-    public int slotIndex;
+    public int tradeSlot;
+    [MarshalAs(UnmanagedType.I4)]
+    public int invenSlot;
     [MarshalAs(UnmanagedType.I4)]
     public int itemID;
 }
@@ -349,6 +354,15 @@ public struct P_TradeConfirm
 {
     [MarshalAs(UnmanagedType.I1)]
     public bool isConfirmed;
+}
+
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct P_TradeConfirmNtf
+{
+    [MarshalAs(UnmanagedType.I1)]
+    public bool isConfirmed;
+    [MarshalAs(UnmanagedType.I8)]
+    public long confirmUserUUID;
 }
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
 public struct P_TradeResult

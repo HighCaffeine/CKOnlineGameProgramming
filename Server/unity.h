@@ -5,6 +5,7 @@
 #define FIXED_DELTA_TIME 0.033333f
 
 constexpr int INVENTORY_SIZE = 5;   //인벤토리 사이즈
+constexpr int TRADE_INVENTORY_SIZE = 9;
 
 typedef struct Vector3
 {

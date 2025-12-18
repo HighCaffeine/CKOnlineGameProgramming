@@ -109,7 +109,6 @@ struct RedisTradeReq
 {
 	int UserA, UserB;				//유저 인덱스 정보
 	char UserAID[MAX_USER_ID_LEN + 1], UserBID[MAX_USER_ID_LEN + 1]; // 유저 ID
-	int CountA, CountB;				//각자 몇 개 보내는지
 	
 	//A 거래 데이터
 	int ItemsASlot[INVENTORY_SIZE];

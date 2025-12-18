@@ -88,6 +88,8 @@ private:
 		bool isLockA = false, isLockB = false;	//lock상태
 		bool isConfirmA = false, isConfirmB = false;	//confirm상태
 		std::vector<int> itemsA, itemsB;	//올린 아이템들
+		std::vector<int> itemsASlot;
+		std::vector<int> itemsBSlot;
 	};
 
 	UserManager* mUserManager;

@@ -338,14 +338,16 @@ struct TRADE_RESPONSE_PACKET : public PACKET_HEADER
 struct TRADE_START_NTF_PACKET : public PACKET_HEADER
 {
 	INT64 tradeUUID; //거래하는 상대방 UUID
+	char reqName[MAX_USER_ID_LEN + 1] = { 0, };
 	TRADE_START_NTF_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::TRADE_START_NTF) {}
 };
 
 //TRADE_ITEM_UPDATE, 아이템을 올리거나 뺄 때 전송됨
 struct TRADE_ITEM_UPDATE_PACKET : public PACKET_HEADER
 {
-	INT32 index;	//인벤 슬룻 번호
-	INT32 itemID;	//아이템 ID 0이면 취소
+	INT32 tradeSlot;    // 거래창 슬롯 번호 (0 ~ 8) - UI 어디에 보여줄지
+	INT32 invenSlot;    // 인벤토리 원본 슬롯 번호 (0 ~ 100) - Redis 삭제용
+	INT32 itemID;       // 아이템 ID
 	TRADE_ITEM_UPDATE_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::TRADE_ITEM_UPDATE) {}
 };
 
@@ -381,7 +383,8 @@ struct TRADE_CONFIRM_PACKET : public PACKET_HEADER
 struct TRADE_CONFIRM_NTF_PACKET : public PACKET_HEADER
 {
 	bool isConfirm;
-	TRADE_CONFIRM_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::TRADE_CONFIRM_NTF) {}
+	INT64 confirmUserUUID;
+	TRADE_CONFIRM_NTF_PACKET() : PACKET_HEADER(sizeof(*this), PACKET_ID::TRADE_CONFIRM_NTF) {}
 };
 
 
